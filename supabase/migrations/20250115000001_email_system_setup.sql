@@ -130,9 +130,10 @@ CREATE TABLE IF NOT EXISTS public.email_unsubscribe_tokens (
 );
 
 -- Index for fast token lookup
+-- Note: Removed 'expires_at > now()' from predicate because now() is not immutable
 CREATE INDEX IF NOT EXISTS idx_unsubscribe_tokens_token
   ON public.email_unsubscribe_tokens(token)
-  WHERE used_at IS NULL AND expires_at > now();
+  WHERE used_at IS NULL;
 
 CREATE INDEX IF NOT EXISTS idx_unsubscribe_tokens_user
   ON public.email_unsubscribe_tokens(user_id);

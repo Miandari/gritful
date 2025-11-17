@@ -17,6 +17,7 @@ import DeleteChallengeButton from '@/components/challenges/DeleteChallengeButton
 import LeaveChallengeButton from '@/components/challenges/LeaveChallengeButton';
 import CopyInviteCodeButton from '@/components/challenges/CopyInviteCodeButton';
 import JoinChallengeButton from '@/components/challenges/JoinChallengeButton';
+import EmailParticipantsButton from '@/components/challenges/EmailParticipantsButton';
 
 export default async function ChallengePage({
   params
@@ -97,14 +98,18 @@ export default async function ChallengePage({
     }
   }
 
-  // Get participant count (only if public or creator)
-  // For now, we'll estimate based on whether it's public
-  if (challenge.is_public || challenge.creator_id === user?.id) {
-    // Creator can see actual count, others see estimate for public challenges
-    participantCount = 1; // At least the creator
-  }
-
   const isCreator = challenge.creator_id === user?.id;
+
+  // Get actual participant count
+  if (challenge.is_public || isCreator) {
+    const { count } = await supabase
+      .from('challenge_participants')
+      .select('*', { count: 'exact', head: true })
+      .eq('challenge_id', id)
+      .eq('status', 'active');
+
+    participantCount = count || 0;
+  }
 
   // Check if user has pending join request
   let joinRequest: any = null;
@@ -185,6 +190,12 @@ export default async function ChallengePage({
                     <DropdownMenuContent align="end" className="w-48">
                       {isCreator && (
                         <>
+                          <EmailParticipantsButton
+                            challengeId={challenge.id}
+                            challengeName={challenge.name}
+                            participantCount={participantCount}
+                          />
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem asChild>
                             <Link href={`/challenges/${id}/participants`} className="cursor-pointer">
                               <Users className="mr-2 h-4 w-4" />
@@ -234,6 +245,12 @@ export default async function ChallengePage({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">
+                    <EmailParticipantsButton
+                      challengeId={challenge.id}
+                      challengeName={challenge.name}
+                      participantCount={participantCount}
+                    />
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
                       <Link href={`/challenges/${id}/participants`} className="cursor-pointer">
                         <Users className="mr-2 h-4 w-4" />

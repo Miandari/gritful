@@ -52,7 +52,7 @@ const templates = {
     <div style="background-color: white; border-left: 4px solid #10b981; padding: 16px; margin: 20px 0; border-radius: 4px;">
       <p style="margin: 0; color: #374151; white-space: pre-wrap;">${data.message}</p>
     </div>
-    <a href="https://gritful.com/challenges/${data.challenge_id}"
+    <a href="https://gritful.app/challenges/${data.challenge_id}"
        style="display: inline-block; background-color: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 500; margin-top: 10px;">
       View Challenge
     </a>
@@ -77,7 +77,7 @@ ${data.sender_name} sent an update for ${data.challenge_name}:
 
 "${data.message}"
 
-View Challenge: https://gritful.com/challenges/${data.challenge_id}
+View Challenge: https://gritful.app/challenges/${data.challenge_id}
 
 ---
 Unsubscribe from challenge updates: ${data.unsubscribe_url}
@@ -118,7 +118,7 @@ Gritful - Build better habits, one day at a time
             <li>${metric.name} (${metric.unit})</li>
           `).join('')}
         </ul>
-        <a href="https://gritful.com/challenges/${challenge.id}"
+        <a href="https://gritful.app/challenges/${challenge.id}"
            style="display: inline-block; background-color: #10b981; color: white; padding: 8px 16px; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 500; margin-top: 8px;">
           Log Progress
         </a>
@@ -148,7 +148,7 @@ Your Active Challenges:
 ${data.challenges.map(challenge => `
 ${challenge.name}
 ${challenge.metrics.map(m => `  - ${m.name} (${m.unit})`).join('\n')}
-Log Progress: https://gritful.com/challenges/${challenge.id}
+Log Progress: https://gritful.app/challenges/${challenge.id}
 `).join('\n')}
 
 ---
@@ -207,7 +207,7 @@ Gritful - Build better habits, one day at a time
 
     <p style="color: #4b5563; font-size: 16px; text-align: center; margin-top: 20px;">Keep up the great work!</p>
     <div style="text-align: center; margin-top: 20px;">
-      <a href="https://gritful.com/dashboard"
+      <a href="https://gritful.app/dashboard"
          style="display: inline-block; background-color: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 500;">
         View Dashboard
       </a>
@@ -238,7 +238,7 @@ Here's how you did this week (${data.week_start} - ${data.week_end}):
 
 Keep up the great work!
 
-View Dashboard: https://gritful.com/dashboard
+View Dashboard: https://gritful.app/dashboard
 
 ---
 Unsubscribe from weekly summaries: ${data.unsubscribe_url}
@@ -351,106 +351,116 @@ serve(async (req) => {
       .update({ status: 'processing' })
       .in('id', emailIds)
 
-    // Process each email
-    const results = await Promise.allSettled(
-      emails.map(async (email) => {
-        try {
-          // Generate unsubscribe token
-          const { data: tokenData, error: tokenError } = await supabase.rpc(
-            'generate_unsubscribe_token',
-            {
-              p_user_id: email.user_id,
-              p_email_type: email.email_type,
-              p_challenge_id: email.template_data?.challenge_id || null,
-            }
-          )
+    // Helper function to add delay between emails (rate limit protection)
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
-          if (tokenError) {
-            console.error('Error generating token:', tokenError)
-            throw new Error(`Token generation failed: ${tokenError.message}`)
+    // Process emails sequentially with 1-second delay to avoid rate limits
+    const results: Array<{id: string, success: boolean, error?: string}> = []
+
+    for (let i = 0; i < emails.length; i++) {
+      const email = emails[i]
+
+      // Add 1-second delay between emails (except for the first one)
+      if (i > 0) {
+        await delay(1000)
+      }
+
+      try {
+        // Generate unsubscribe token
+        const { data: tokenData, error: tokenError } = await supabase.rpc(
+          'generate_unsubscribe_token',
+          {
+            p_user_id: email.user_id,
+            p_email_type: email.email_type,
+            p_challenge_id: email.template_data?.challenge_id || null,
           }
+        )
 
-          const unsubscribe_url = `https://gritful.com/unsubscribe/${tokenData}`
-
-          // Get template function
-          const templateFn = templates[email.template_name as keyof typeof templates]
-          if (!templateFn) {
-            throw new Error(`Unknown template: ${email.template_name}`)
-          }
-
-          // Render template with unsubscribe URL
-          const rendered = templateFn({
-            ...email.template_data,
-            unsubscribe_url,
-          })
-
-          // Send via Resend
-          const resendResponse = await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${RESEND_API_KEY}`,
-            },
-            body: JSON.stringify({
-              from: 'Gritful <noreply@gritful.com>',
-              to: [email.recipient_email],
-              subject: email.subject,
-              html: rendered.html,
-              text: rendered.text,
-              headers: {
-                'List-Unsubscribe': `<${unsubscribe_url}>`,
-                'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-              },
-            }),
-          })
-
-          if (!resendResponse.ok) {
-            const errorText = await resendResponse.text()
-            throw new Error(`Resend API error (${resendResponse.status}): ${errorText}`)
-          }
-
-          const resendData = await resendResponse.json()
-          console.log(`Email sent successfully:`, resendData)
-
-          // Mark as sent
-          await supabase
-            .from('email_queue')
-            .update({
-              status: 'sent',
-              sent_at: new Date().toISOString(),
-            })
-            .eq('id', email.id)
-
-          return { id: email.id, success: true }
-        } catch (err) {
-          console.error(`Error processing email ${email.id}:`, err)
-
-          // Mark as failed or pending for retry
-          const newRetryCount = email.retry_count + 1
-          const isFinalFailure = newRetryCount >= MAX_RETRIES
-
-          await supabase
-            .from('email_queue')
-            .update({
-              status: isFinalFailure ? 'failed' : 'pending',
-              retry_count: newRetryCount,
-              error_message: err instanceof Error ? err.message : String(err),
-              failed_at: isFinalFailure ? new Date().toISOString() : null,
-              // Exponential backoff: 5 min, 30 min, 2 hours
-              scheduled_for: isFinalFailure
-                ? email.scheduled_for
-                : new Date(Date.now() + Math.pow(6, newRetryCount) * 60 * 1000).toISOString(),
-            })
-            .eq('id', email.id)
-
-          return { id: email.id, success: false, error: err instanceof Error ? err.message : String(err) }
+        if (tokenError) {
+          console.error('Error generating token:', tokenError)
+          throw new Error(`Token generation failed: ${tokenError.message}`)
         }
-      })
-    )
+
+        const unsubscribe_url = `https://gritful.app/unsubscribe/${tokenData}`
+
+        // Get template function
+        const templateFn = templates[email.template_name as keyof typeof templates]
+        if (!templateFn) {
+          throw new Error(`Unknown template: ${email.template_name}`)
+        }
+
+        // Render template with unsubscribe URL
+        const rendered = templateFn({
+          ...email.template_data,
+          unsubscribe_url,
+        })
+
+        // Send via Resend
+        const resendResponse = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${RESEND_API_KEY}`,
+          },
+          body: JSON.stringify({
+            from: 'Gritful <noreply@gritful.app>',
+            to: [email.recipient_email],
+            subject: email.subject,
+            html: rendered.html,
+            text: rendered.text,
+            headers: {
+              'List-Unsubscribe': `<${unsubscribe_url}>`,
+              'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+            },
+          }),
+        })
+
+        if (!resendResponse.ok) {
+          const errorText = await resendResponse.text()
+          throw new Error(`Resend API error (${resendResponse.status}): ${errorText}`)
+        }
+
+        const resendData = await resendResponse.json()
+        console.log(`Email sent successfully:`, resendData)
+
+        // Mark as sent
+        await supabase
+          .from('email_queue')
+          .update({
+            status: 'sent',
+            sent_at: new Date().toISOString(),
+          })
+          .eq('id', email.id)
+
+        results.push({ id: email.id, success: true })
+      } catch (err) {
+        console.error(`Error processing email ${email.id}:`, err)
+
+        // Mark as failed or pending for retry
+        const newRetryCount = email.retry_count + 1
+        const isFinalFailure = newRetryCount >= MAX_RETRIES
+
+        await supabase
+          .from('email_queue')
+          .update({
+            status: isFinalFailure ? 'failed' : 'pending',
+            retry_count: newRetryCount,
+            error_message: err instanceof Error ? err.message : String(err),
+            failed_at: isFinalFailure ? new Date().toISOString() : null,
+            // Exponential backoff: 5 min, 30 min, 2 hours
+            scheduled_for: isFinalFailure
+              ? email.scheduled_for
+              : new Date(Date.now() + Math.pow(6, newRetryCount) * 60 * 1000).toISOString(),
+          })
+          .eq('id', email.id)
+
+        results.push({ id: email.id, success: false, error: err instanceof Error ? err.message : String(err) })
+      }
+    }
 
     // Calculate statistics
-    const succeeded = results.filter((r) => r.status === 'fulfilled' && r.value.success).length
-    const failed = results.filter((r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success)).length
+    const succeeded = results.filter((r) => r.success).length
+    const failed = results.filter((r) => !r.success).length
 
     console.log(`Processed ${emails.length} emails: ${succeeded} succeeded, ${failed} failed`)
 
@@ -459,7 +469,7 @@ serve(async (req) => {
         processed: emails.length,
         succeeded,
         failed,
-        results: results.map((r) => r.status === 'fulfilled' ? r.value : { success: false }),
+        results: results,
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     )
