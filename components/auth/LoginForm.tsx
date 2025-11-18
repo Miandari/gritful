@@ -68,16 +68,26 @@ export function LoginForm() {
   const handleGoogleLogin = async () => {
     setLoading(true);
 
+    console.log('[LoginForm] Google login - redirect parameter:', redirect);
+
     try {
+      // Pass redirect as 'next' parameter through the OAuth callback
+      const callbackUrl = redirect
+        ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirect)}`
+        : `${window.location.origin}/auth/callback`;
+
+      console.log('[LoginForm] Google OAuth callback URL:', callbackUrl);
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback${redirect ? `?redirect=${encodeURIComponent(redirect)}` : ''}`,
+          redirectTo: callbackUrl,
         },
       });
 
       if (error) throw error;
     } catch (error: any) {
+      console.error('[LoginForm] Google login error:', error);
       toast.error(error.message || 'Failed to log in with Google');
       setLoading(false);
     }
