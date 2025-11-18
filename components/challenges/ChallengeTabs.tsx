@@ -63,41 +63,51 @@ export function ChallengeTabs({
       <TabsList className="grid w-full grid-cols-5 h-auto">
         <TabsTrigger value="overview" className="flex-col sm:flex-row gap-1 px-2 py-2">
           <BarChart3 className="h-4 w-4 sm:mr-2" />
-          <span className="text-xs sm:text-sm">Overview</span>
+          <div className="flex items-center gap-1">
+            <span className="text-xs sm:text-sm">Overview</span>
+          </div>
         </TabsTrigger>
 
         {isParticipant && (
           <TabsTrigger value="progress" className="flex-col sm:flex-row gap-1 px-2 py-2">
             <Calendar className="h-4 w-4 sm:mr-2" />
-            <span className="text-xs sm:text-sm">Progress</span>
+            <div className="flex items-center gap-1">
+              <span className="text-xs sm:text-sm">Progress</span>
+            </div>
           </TabsTrigger>
         )}
 
         <TabsTrigger value="participants" className="flex-col sm:flex-row gap-1 px-2 py-2">
           <Users className="h-4 w-4 sm:mr-2" />
-          <span className="text-xs sm:text-sm hidden sm:inline">Participants</span>
-          <span className="text-xs sm:hidden">People</span>
-          {participantCount > 0 && (
-            <Badge variant="secondary" className="ml-1 text-xs">
-              {participantCount}
-            </Badge>
-          )}
+          <div className="flex items-center gap-1">
+            <span className="text-xs sm:text-sm hidden sm:inline">Participants</span>
+            <span className="text-xs sm:hidden">People</span>
+            {participantCount > 0 && (
+              <Badge variant="secondary" className="text-xs">
+                {participantCount}
+              </Badge>
+            )}
+          </div>
         </TabsTrigger>
 
         <TabsTrigger value="updates" className="flex-col sm:flex-row gap-1 px-2 py-2 relative">
           <MessageSquare className="h-4 w-4 sm:mr-2" />
-          <span className="text-xs sm:text-sm">Updates</span>
-          {unreadCount > 0 && (
-            <Badge variant="destructive" className="ml-1 text-xs">
-              {unreadCount}
-            </Badge>
-          )}
+          <div className="flex items-center gap-1">
+            <span className="text-xs sm:text-sm">Updates</span>
+            {unreadCount > 0 && (
+              <Badge variant="destructive" className="text-xs">
+                {unreadCount}
+              </Badge>
+            )}
+          </div>
         </TabsTrigger>
 
         {isParticipant && (
           <TabsTrigger value="entries" className="flex-col sm:flex-row gap-1 px-2 py-2">
             <Calendar className="h-4 w-4 sm:mr-2" />
-            <span className="text-xs sm:text-sm">Entries</span>
+            <div className="flex items-center gap-1">
+              <span className="text-xs sm:text-sm">Entries</span>
+            </div>
           </TabsTrigger>
         )}
       </TabsList>
