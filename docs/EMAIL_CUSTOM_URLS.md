@@ -27,7 +27,7 @@ const queueEntries = usersWithEmail.map((user) => ({
     message: message,
     challenge_id: challengeId,
     // Optional: Custom URL for the email button
-    action_url: `https://gritful.com/challenges/${challengeId}/updates`,
+    action_url: `https://www.gritful.app/challenges/${challengeId}/updates`,
   },
   scheduled_for: new Date().toISOString(),
 }))
@@ -37,11 +37,11 @@ const queueEntries = usersWithEmail.map((user) => ({
 
 The base APP_URL is configured in Supabase secrets:
 ```bash
-# Set production URL
-supabase secrets set APP_URL=https://gritful.com
+# Set production URL (CRITICAL: Must use www.gritful.app)
+supabase secrets set APP_URL=https://www.gritful.app
 
-# Or for testing/staging
-supabase secrets set APP_URL=https://staging.gritful.com
+# Or for local development
+# APP_URL is set in .env.local to http://localhost:3000
 ```
 
 ## Example Use Cases

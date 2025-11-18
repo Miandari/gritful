@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { DayDetailModal } from './DayDetailModal';
+import EmailParticipantButton from '@/components/challenges/EmailParticipantButton';
 
 interface DailyEntry {
   entry_date: string;
@@ -45,6 +46,8 @@ interface ParticipantDetailModalProps {
   participant: Participant;
   currentUserId: string;
   challengeId: string;
+  challengeName: string;
+  challengeCreatorId: string;
   challengeStartDate: Date;
   challengeEndDate: Date;
   challengeMetrics: any[];
@@ -56,6 +59,8 @@ export function ParticipantDetailModal({
   participant,
   currentUserId,
   challengeId,
+  challengeName,
+  challengeCreatorId,
   challengeStartDate,
   challengeEndDate,
   challengeMetrics,
@@ -158,17 +163,32 @@ export function ParticipantDetailModal({
     ? Math.round((participant.completedDays / participant.totalDays) * 100)
     : 0;
 
+  const isCreator = currentUserId === challengeCreatorId;
+  const isNotSelf = participant.user_id !== currentUserId;
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-2xl">
-              {participant.profile.username || 'Unknown User'}
-            </DialogTitle>
-            <DialogDescription>
-              View their progress and activity
-            </DialogDescription>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <DialogTitle className="text-2xl">
+                  {participant.profile.username || 'Unknown User'}
+                </DialogTitle>
+                <DialogDescription>
+                  View their progress and activity
+                </DialogDescription>
+              </div>
+              {isCreator && isNotSelf && (
+                <EmailParticipantButton
+                  challengeId={challengeId}
+                  challengeName={challengeName}
+                  participantUserId={participant.user_id}
+                  participantUsername={participant.profile.username || 'this participant'}
+                />
+              )}
+            </div>
           </DialogHeader>
 
           <div className="space-y-6">

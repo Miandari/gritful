@@ -290,6 +290,8 @@ export default async function ProgressPage({
               participants={participantsWithStats}
               currentUserId={user.id}
               challengeId={challenge.id}
+              challengeName={challenge.name}
+              challengeCreatorId={challenge.creator_id}
               challengeStartDate={new Date(challenge.starts_at)}
               challengeEndDate={new Date(challenge.ends_at)}
               challengeMetrics={challenge.metrics || []}

@@ -10,8 +10,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'Gritful - Track Your Daily Challenges',
-  description: 'Create, join, and track daily challenges with custom metrics',
+  title: 'Gritful - Build Better Habits',
+  description: 'Create, join, and track challenges with custom metrics. Daily, weekly, or monthly - build grit at your own pace.',
 };
 
 export default function RootLayout({

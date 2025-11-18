@@ -8,7 +8,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const APP_URL = Deno.env.get('APP_URL') || 'https://gritful.com' // Production URL
+const APP_URL = Deno.env.get('APP_URL') || 'https://www.gritful.app' // Production URL - CRITICAL: Must use www subdomain
 const BATCH_SIZE = 10 // Process 10 emails at a time
 const MAX_RETRIES = 3
 

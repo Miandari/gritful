@@ -12,7 +12,8 @@ export interface SendChallengeUpdateResult {
 export async function sendChallengeUpdate(
   challengeId: string,
   subject: string,
-  message: string
+  message: string,
+  recipientUserIds?: string[]
 ): Promise<SendChallengeUpdateResult> {
   try {
     const supabase = await createClient()
@@ -51,25 +52,50 @@ export async function sendChallengeUpdate(
 
     const senderName = creatorProfile?.full_name || creatorProfile?.username || 'Challenge Creator'
 
-    // Get all active participant IDs
-    const { data: participants, error: participantsError } = await supabase
-      .from('challenge_participants')
-      .select('user_id')
-      .eq('challenge_id', challengeId)
-      .eq('status', 'active')
+    // Get active participant IDs - either from parameter or all active participants
+    let userIds: string[]
 
-    if (participantsError) {
-      console.error('Error fetching participants:', participantsError)
-      return { success: false, error: 'Failed to fetch participants' }
-    }
+    if (recipientUserIds && recipientUserIds.length > 0) {
+      // If specific recipients are provided, verify they are active participants
+      const { data: participants, error: participantsError } = await supabase
+        .from('challenge_participants')
+        .select('user_id')
+        .eq('challenge_id', challengeId)
+        .eq('status', 'active')
+        .in('user_id', recipientUserIds)
 
-    if (!participants || participants.length === 0) {
-      return { success: false, error: 'No participants found' }
+      if (participantsError) {
+        console.error('Error fetching participants:', participantsError)
+        return { success: false, error: 'Failed to fetch participants' }
+      }
+
+      if (!participants || participants.length === 0) {
+        return { success: false, error: 'None of the selected users are active participants' }
+      }
+
+      userIds = participants.map((p) => p.user_id)
+    } else {
+      // Get all active participants
+      const { data: participants, error: participantsError } = await supabase
+        .from('challenge_participants')
+        .select('user_id')
+        .eq('challenge_id', challengeId)
+        .eq('status', 'active')
+
+      if (participantsError) {
+        console.error('Error fetching participants:', participantsError)
+        return { success: false, error: 'Failed to fetch participants' }
+      }
+
+      if (!participants || participants.length === 0) {
+        return { success: false, error: 'No participants found' }
+      }
+
+      userIds = participants.map((p) => p.user_id)
     }
 
     // Get user IDs and email addresses for opted-in users using our RPC function
     // This function checks email preferences and only returns confirmed emails
-    const userIds = participants.map((p) => p.user_id)
 
     const { data: usersWithEmail, error: emailError } = await supabase.rpc(
       'get_user_emails_for_challenge_update',

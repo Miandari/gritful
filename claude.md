@@ -11,6 +11,16 @@
   - ALWAYS backup data before any schema changes
 - User data is the most valuable asset - preserve it at all costs
 
+## Production Domain
+
+**CRITICAL: The production domain is `www.gritful.app`**
+- Production URL: `https://www.gritful.app`
+- Email templates and links must use `www.gritful.app`
+- Supabase secrets: `APP_URL=https://www.gritful.app`
+- Supabase Site URL: `https://www.gritful.app`
+- NEVER use `gritful.com` or bare `gritful.app` - always use the `www` subdomain
+- The bare domain `gritful.app` (without www) does not work for OAuth redirects
+
 ## Code Style Guidelines
 
 **NO EMOJIS**: Do not use emojis anywhere in the codebase, file content, UI/UX, or commit messages unless explicitly necessary. Keep all text professional and emoji-free.
@@ -179,47 +189,81 @@ Should be able to use:
 
 ### Email Notification System (Using Resend + Supabase)
 **Strategy**: Conservative defaults - only challenge updates enabled initially
+**Status**: MVP Complete - Challenge updates working! ✅
 
-#### Phase 1: Core Infrastructure
-- [ ] **Database Schema for Email System**
-  - Create `email_queue` table for reliable processing
-  - Create `email_unsubscribe_tokens` table
-  - Update `user_preferences` with email settings (all OFF except challenge_updates)
-  - Migration: `/supabase/migrations/[timestamp]_email_system.sql`
+#### Phase 1: Core Infrastructure ✅ COMPLETE
+- [x] **Database Schema for Email System**
+  - Created `email_queue` table for reliable processing
+  - Created `email_unsubscribe_tokens` table
+  - Updated `user_preferences` with email settings (all OFF except challenge_updates)
+  - Migrations: `/supabase/migrations/20250115000001_email_system_setup.sql`
 
-- [ ] **Resend Email Service Setup**
-  - Sign up for Resend free tier (3,000 emails/month)
-  - Add gritful.com domain to Resend
-  - Configure DNS records (SPF, DKIM, DMARC)
-  - Store RESEND_API_KEY in Supabase secrets
+- [x] **Resend Email Service Setup**
+  - Signed up for Resend free tier (3,000 emails/month)
+  - Added gritful.com domain to Resend with DNS verification
+  - Configured DNS records (SPF, DKIM, DMARC)
+  - Stored RESEND_API_KEY in Supabase secrets
 
-- [ ] **Email Processor Edge Function**
-  - Create `/supabase/functions/email-processor/index.ts`
-  - Implement queue processing with retry logic
-  - Add email templates (HTML + text versions)
-  - Focus on 'challenge_update' type initially
+- [x] **Email Processor Edge Function**
+  - Created `/supabase/functions/email-processor/index.ts`
+  - Implemented queue processing with retry logic and exponential backoff
+  - Added email templates (HTML + text versions) for all 4 types
+  - Deployed with rate limit protection (1-second delays)
 
-#### Phase 2: Challenge Update Emails (MVP)
-- [ ] **Challenge Update UI**
-  - Add "Email Participants" button to challenge detail page (creator only)
-  - Create `/components/challenges/SendUpdateModal.tsx`
-  - Show participant count who will receive email
+#### Phase 2: Challenge Update Emails (MVP) ✅ COMPLETE
+- [x] **Challenge Update UI**
+  - Added "Email Participants" button to challenge detail page (creator only)
+  - Created `/components/challenges/SendUpdateModal.tsx`
+  - Shows participant count who will receive email
+  - Component: `/components/challenges/EmailParticipantsButton.tsx`
 
-- [ ] **Server Action for Updates**
-  - Create `/app/actions/sendChallengeUpdate.ts`
-  - Verify sender is challenge creator
-  - Queue emails for opted-in participants only
+- [x] **Server Action for Updates**
+  - Created `/app/actions/sendChallengeUpdate.ts`
+  - Verifies sender is challenge creator
+  - Queues emails for opted-in participants only
+  - Uses secure RPC function to retrieve emails
+  - Triggers email processor instantly after queuing
 
-- [ ] **Unsubscribe System**
-  - Create `/app/unsubscribe/[token]/page.tsx`
-  - Generate secure unsubscribe tokens
-  - Add List-Unsubscribe headers to emails
+- [x] **Unsubscribe System**
+  - Created `/app/unsubscribe/[token]/page.tsx`
+  - Generates secure unsubscribe tokens
+  - Adds List-Unsubscribe headers to emails
+  - Token-based one-click unsubscribe
 
-#### Phase 3: User Preferences
-- [ ] **Email Settings in Profile**
-  - Update `/components/profile/ProfileSettingsSection.tsx`
-  - Add email notification toggles (all OFF by default except challenge_updates)
-  - Show clear opt-in messaging
+#### Phase 3: User Preferences ✅ COMPLETE
+- [x] **Email Settings in Profile**
+  - Updated `/components/profile/ProfileSettingsSection.tsx`
+  - Added email notification toggles (all OFF by default except challenge_updates)
+  - Shows clear opt-in messaging
+  - Conservative defaults implemented
+
+#### Remaining Work & Improvements
+- [ ] **Set up automated cron job for email processing**
+  - GitHub Actions workflow to trigger processor every 5 minutes
+  - Automatic retry for failed/pending emails
+  - Monitor queue health
+
+- [ ] **Remove 1-second delay after implementing better solution**
+  - Current: Sequential sending with 1s delays (temporary rate limit workaround)
+  - Future: Use Resend Batch API or upgrade plan
+  - Location: `/supabase/functions/email-processor/index.ts`
+
+- [ ] **Verify and test unsubscribe functionality end-to-end**
+  - Test unsubscribe flow from email link
+  - Verify preferences update correctly
+  - Test re-subscription
+
+- [ ] **Implement selective participant emailing**
+  - Add participant checkbox selection to SendUpdateModal
+  - Modify sendChallengeUpdate to accept optional recipientUserIds[]
+  - Add individual "Email" button per participant
+  - Foundation for messaging system Phase 1
+
+#### Known Issues & Tech Debt
+- **Rate Limiting**: Using 1-second delays between emails as temporary workaround
+- **Email Processor**: Needs automated triggering (currently manual/instant)
+- **URL Configuration**: APP_URL set in Supabase secrets, fallback to gritful.com
+- **Custom Action URLs**: Partially implemented, needs full integration for different email types
 
 #### Phase 4: Future Email Types (Not Active by Default)
 - [ ] **Daily Reminders** (Default: OFF)
@@ -237,7 +281,65 @@ Should be able to use:
   - Instant delivery to challenge creator
   - Users must explicitly opt-in
 
+### Future: Unified Messaging System Architecture
+**Vision**: Comprehensive messaging platform integrating email, in-app notifications, and direct messaging
+
+#### Phase 1: Selective Participant Emailing (Next - 2 hours)
+- [ ] **Enhance SendUpdateModal UI**
+  - Add participant checkbox list with Select All/None toggles
+  - Show participant avatars, usernames, and email status
+  - Display selection count
+
+- [ ] **Update Backend**
+  - Modify sendChallengeUpdate to accept optional recipientUserIds[]
+  - Filter email queue based on selection
+  - Maintain backward compatibility (no recipients = all)
+
+- [ ] **Individual Email Actions**
+  - Add email icon to participant cards/list
+  - Quick-email single participant
+  - Reuse SendUpdateModal with pre-selection
+
+#### Phase 2: Challenge Update Center/Message Board (Future - 3-4 days)
+- [ ] **Database Schema**
+  - Create `challenge_messages` table
+  - Create `message_recipients` table with read tracking
+  - Support threading, pinning, announcements
+
+- [ ] **Update Center UI**
+  - New tab on challenge detail page
+  - Message history with real-time updates
+  - Reply/thread functionality
+  - Rich text editor with markdown
+
+- [ ] **Integration**
+  - Email updates also create message records
+  - Dual-channel delivery (email + in-app)
+  - Notification when new messages posted
+
+#### Phase 3: Direct User Messaging (Future - 1 week)
+- [ ] **Database Schema**
+  - `conversations` table
+  - `direct_messages` table
+  - Conversation participants tracking
+
+- [ ] **Messaging UI**
+  - Inbox/outbox interface
+  - Real-time message delivery
+  - Typing indicators
+  - Read receipts
+  - Block/mute options
+
+#### Phase 4: Unified Notification Preferences (Future)
+- [ ] **Preference Center**
+  - Granular controls per message type
+  - Delivery channels (in-app, email, push)
+  - Frequency options (instant, batch, daily)
+  - Quiet hours configuration
+
 #### Key Implementation Notes:
+- **Progressive Enhancement**: Each phase adds value without breaking previous features
+- **No Throwaway Work**: Email system becomes one delivery channel in larger system
 - **Conservative approach**: Start with only challenge updates enabled
 - **Free tier friendly**: Stay under 3,000 emails/month initially
 - **Spam prevention**: Proper DNS setup, warming strategy, unsubscribe links

@@ -306,7 +306,7 @@ export default function ProfileInfoSection({ profile, userEmail }: ProfileInfoSe
             </Label>
             <div className="flex">
               <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-input bg-muted text-muted-foreground text-sm">
-                gritful.com/u/
+                gritful.app/u/
               </span>
               <Input
                 id="public_profile_url"
