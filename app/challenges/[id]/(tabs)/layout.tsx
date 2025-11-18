@@ -38,7 +38,21 @@ export default async function ChallengeLayout({
     .eq('id', id)
     .single();
 
-  if (challengeError || !challenge) {
+  // If challenge doesn't exist (PGRST116 means 0 rows returned), show 404
+  if (challengeError?.code === 'PGRST116') {
+    console.error('Challenge not found:', id);
+    notFound();
+  }
+
+  // If we have other errors (like RLS) but no user, render a minimal layout
+  // and let the individual page handle the redirect to login
+  if (!challenge && !user) {
+    console.log('Challenge RLS blocked for unauthenticated user, rendering minimal layout');
+    return <div className="min-h-screen bg-background">{children}</div>;
+  }
+
+  // If we still don't have challenge data at this point, something is wrong
+  if (!challenge) {
     console.error('Challenge fetch error:', challengeError);
     notFound();
   }
