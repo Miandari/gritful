@@ -3,6 +3,7 @@ import { PostUpdateButton } from '@/components/challenges/PostUpdateButton';
 import { UpdatesPageClient } from '@/components/challenges/UpdatesPageClient';
 import { getChallengeMessages } from '@/app/actions/challengeMessages';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { redirect } from 'next/navigation';
 
 export default async function ChallengeUpdatesPage({
   params,
@@ -16,6 +17,11 @@ export default async function ChallengeUpdatesPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  // Redirect to login if not authenticated
+  if (!user) {
+    redirect(`/login?redirect=/challenges/${id}/updates`);
+  }
 
   // Get challenge details
   const { data: challenge } = await supabase
