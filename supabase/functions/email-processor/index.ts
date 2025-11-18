@@ -8,6 +8,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const APP_URL = Deno.env.get('APP_URL') || 'https://gritful.com' // Production URL
 const BATCH_SIZE = 10 // Process 10 emails at a time
 const MAX_RETRIES = 3
 
@@ -32,8 +33,13 @@ const templates = {
     challenge_name: string
     message: string
     challenge_id: string
+    action_url?: string  // Optional custom URL for the button
     unsubscribe_url: string
-  }): EmailTemplate => ({
+  }): EmailTemplate => {
+    // Use custom action URL or default to challenge page
+    const actionUrl = data.action_url || `${APP_URL}/challenges/${data.challenge_id}`
+
+    return {
     html: `
 <!DOCTYPE html>
 <html>
@@ -52,7 +58,7 @@ const templates = {
     <div style="background-color: white; border-left: 4px solid #10b981; padding: 16px; margin: 20px 0; border-radius: 4px;">
       <p style="margin: 0; color: #374151; white-space: pre-wrap;">${data.message}</p>
     </div>
-    <a href="https://gritful.app/challenges/${data.challenge_id}"
+    <a href="${actionUrl}"
        style="display: inline-block; background-color: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 500; margin-top: 10px;">
       View Challenge
     </a>
@@ -77,14 +83,15 @@ ${data.sender_name} sent an update for ${data.challenge_name}:
 
 "${data.message}"
 
-View Challenge: https://gritful.app/challenges/${data.challenge_id}
+View Challenge: ${actionUrl}
 
 ---
 Unsubscribe from challenge updates: ${data.unsubscribe_url}
 
 Gritful - Build better habits, one day at a time
     `.trim(),
-  }),
+    }
+  },
 
   daily_reminder: (data: {
     username: string
@@ -381,7 +388,7 @@ serve(async (req) => {
           throw new Error(`Token generation failed: ${tokenError.message}`)
         }
 
-        const unsubscribe_url = `https://gritful.app/unsubscribe/${tokenData}`
+        const unsubscribe_url = `${APP_URL}/unsubscribe/${tokenData}`
 
         // Get template function
         const templateFn = templates[email.template_name as keyof typeof templates]
