@@ -11,6 +11,8 @@ export default async function ChallengeUpdatesPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  console.log('[Updates Page] Challenge ID:', id);
+
   const supabase = await createClient();
 
   // Get current user
@@ -18,10 +20,16 @@ export default async function ChallengeUpdatesPage({
     data: { user },
   } = await supabase.auth.getUser();
 
+  console.log('[Updates Page] User authenticated:', !!user, 'User ID:', user?.id);
+
   // Redirect to login if not authenticated
   if (!user) {
-    redirect(`/login?redirect=/challenges/${id}/updates`);
+    const redirectUrl = `/login?redirect=/challenges/${id}/updates`;
+    console.log('[Updates Page] No user found, redirecting to:', redirectUrl);
+    redirect(redirectUrl);
   }
+
+  console.log('[Updates Page] User authenticated, loading page');
 
   // Get challenge details
   const { data: challenge } = await supabase

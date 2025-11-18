@@ -19,9 +19,15 @@ export function LoginForm() {
   const redirect = searchParams.get('redirect');
   const supabase = createClient();
 
+  // Debug logging
+  console.log('[LoginForm] Redirect parameter:', redirect);
+  console.log('[LoginForm] Full search params:', searchParams.toString());
+
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+
+    console.log('[LoginForm] Starting login process...');
 
     try {
       const { error } = await supabase.auth.signInWithPassword({
@@ -31,10 +37,14 @@ export function LoginForm() {
 
       if (error) throw error;
 
+      const redirectPath = redirect || '/dashboard';
+      console.log('[LoginForm] Login successful, redirecting to:', redirectPath);
+
       toast.success('Logged in successfully!');
-      router.push(redirect || '/dashboard');
+      router.push(redirectPath);
       router.refresh();
     } catch (error: any) {
+      console.error('[LoginForm] Login error:', error);
       toast.error(error.message || 'Failed to log in');
     } finally {
       setLoading(false);
