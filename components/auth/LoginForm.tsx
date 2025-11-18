@@ -23,6 +23,11 @@ export function LoginForm() {
   console.log('[LoginForm] Redirect parameter:', redirect);
   console.log('[LoginForm] Full search params:', searchParams.toString());
 
+  // Visual debugging - show what redirect we captured
+  if (typeof window !== 'undefined') {
+    console.log('[LoginForm] Window URL:', window.location.href);
+  }
+
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -39,8 +44,12 @@ export function LoginForm() {
 
       const redirectPath = redirect || '/dashboard';
       console.log('[LoginForm] Login successful, redirecting to:', redirectPath);
+      console.log('[LoginForm] Redirect variable value:', redirect);
+      console.log('[LoginForm] Final path:', redirectPath);
 
-      toast.success('Logged in successfully!');
+      // Show toast with redirect info for debugging
+      toast.success(`Logged in! Redirecting to: ${redirectPath}`);
+
       router.push(redirectPath);
       router.refresh();
     } catch (error: any) {
