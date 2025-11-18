@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -24,9 +24,13 @@ export function LoginForm() {
   console.log('[LoginForm] Full search params:', searchParams.toString());
 
   // Visual debugging - show what redirect we captured
-  if (typeof window !== 'undefined') {
-    console.log('[LoginForm] Window URL:', window.location.href);
-  }
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      console.log('[LoginForm] Window URL:', window.location.href);
+      console.log('[LoginForm] Search params on mount:', searchParams.toString());
+      console.log('[LoginForm] Redirect value on mount:', redirect);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,8 +54,9 @@ export function LoginForm() {
       // Show toast with redirect info for debugging
       toast.success(`Logged in! Redirecting to: ${redirectPath}`);
 
-      router.push(redirectPath);
-      router.refresh();
+      // Use window.location for full page navigation to ensure redirect works
+      // router.push + router.refresh can cause race conditions with Supabase auth
+      window.location.href = redirectPath;
     } catch (error: any) {
       console.error('[LoginForm] Login error:', error);
       toast.error(error.message || 'Failed to log in');
