@@ -42,15 +42,19 @@ export function Navigation() {
       setProfile(data);
     };
 
-    // Fetch unread notifications count
+    // Fetch unread challenge updates count
     const fetchUnreadCount = async () => {
-      const { count } = await supabase
-        .from('notifications')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('read', false);
+      const { data, error } = await supabase.rpc('get_total_unread_updates', {
+        p_user_id: user.id,
+      });
 
-      setUnreadCount(count || 0);
+      if (error) {
+        console.error('Error fetching unread count:', error);
+        setUnreadCount(0);
+        return;
+      }
+
+      setUnreadCount(data || 0);
     };
 
     fetchProfile();
@@ -73,30 +77,36 @@ export function Navigation() {
       )
       .subscribe();
 
-    // Subscribe to new notifications and read status changes
-    const notificationsChannel = supabase
-      .channel('notifications')
+    // Subscribe to new challenge messages
+    const messagesChannel = supabase
+      .channel('challenge-messages')
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`,
+          table: 'challenge_messages',
         },
         () => {
+          // Refresh unread count when any new message is posted
           fetchUnreadCount();
         }
       )
+      .subscribe();
+
+    // Subscribe to challenge_participants updates (when messages are marked as read)
+    const participantsChannel = supabase
+      .channel('challenge-participants-updates')
       .on(
         'postgres_changes',
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'notifications',
+          table: 'challenge_participants',
           filter: `user_id=eq.${user.id}`,
         },
         () => {
+          // Refresh unread count when last_message_read_at is updated
           fetchUnreadCount();
         }
       )
@@ -104,7 +114,8 @@ export function Navigation() {
 
     return () => {
       supabase.removeChannel(profileChannel);
-      supabase.removeChannel(notificationsChannel);
+      supabase.removeChannel(messagesChannel);
+      supabase.removeChannel(participantsChannel);
     };
   }, [user, supabase]);
 
@@ -154,8 +165,8 @@ export function Navigation() {
                 {/* Theme Toggle */}
                 <ThemeToggle />
 
-                {/* Notification Bell */}
-                <Link href="/challenges/requests" className="relative">
+                {/* Updates Bell */}
+                <Link href="/updates" className="relative">
                   <Button variant="ghost" size="icon" className="relative">
                     <Bell className="h-5 w-5" />
                     {unreadCount > 0 && (

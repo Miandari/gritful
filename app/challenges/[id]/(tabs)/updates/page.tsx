@@ -1,4 +1,8 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { createClient } from '@/lib/supabase/server';
+import { PostUpdateButton } from '@/components/challenges/PostUpdateButton';
+import { UpdatesPageClient } from '@/components/challenges/UpdatesPageClient';
+import { getChallengeMessages } from '@/app/actions/challengeMessages';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default async function ChallengeUpdatesPage({
   params,
@@ -6,24 +10,81 @@ export default async function ChallengeUpdatesPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const supabase = await createClient();
+
+  // Get current user
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Get challenge details
+  const { data: challenge } = await supabase
+    .from('challenges')
+    .select('creator_id, name')
+    .eq('id', id)
+    .single();
+
+  const isCreator = challenge?.creator_id === user?.id;
+
+  // Get participant count for email notifications
+  let participantCount = 0;
+  if (isCreator) {
+    const { count } = await supabase
+      .from('challenge_participants')
+      .select('*', { count: 'exact', head: true })
+      .eq('challenge_id', id)
+      .eq('status', 'active');
+    participantCount = count || 0;
+  }
+
+  // Get messages
+  const messagesResult = await getChallengeMessages({
+    challengeId: id,
+    limit: 20,
+    offset: 0,
+  });
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Challenge Updates</CardTitle>
-          <CardDescription>View announcements and messages from the challenge creator</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-12 text-muted-foreground">
-            <p className="text-lg mb-2">Updates feed coming soon</p>
-            <p className="text-sm">
-              This will be a message board where the challenge creator can post updates
-              and participants can stay informed about important announcements.
+      {/* Post Update Button - Only visible to creators */}
+      {isCreator && (
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-lg font-semibold">Challenge Updates</h2>
+            <p className="text-sm text-muted-foreground">
+              Share updates and announcements with all participants
             </p>
           </div>
-        </CardContent>
-      </Card>
+          <PostUpdateButton challengeId={id} participantCount={participantCount} />
+        </div>
+      )}
+
+      {/* Updates Feed */}
+      {messagesResult.messages && messagesResult.messages.length > 0 ? (
+        <UpdatesPageClient
+          initialMessages={messagesResult.messages}
+          challengeId={id}
+          currentUserId={user?.id}
+          isCreator={isCreator}
+          total={messagesResult.total || 0}
+          hasMore={messagesResult.hasMore || false}
+        />
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>No Updates Yet</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-12 text-muted-foreground">
+              <p className="text-sm">
+                {isCreator
+                  ? 'Click "Post Update" above to share your first update with participants!'
+                  : 'Check back later for updates from the challenge creator.'}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

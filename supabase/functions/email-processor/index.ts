@@ -36,8 +36,8 @@ const templates = {
     action_url?: string  // Optional custom URL for the button
     unsubscribe_url: string
   }): EmailTemplate => {
-    // Use custom action URL or default to challenge page
-    const actionUrl = data.action_url || `${APP_URL}/challenges/${data.challenge_id}`
+    // Use custom action URL or default to challenge updates tab
+    const actionUrl = data.action_url || `${APP_URL}/challenges/${data.challenge_id}/updates`
 
     return {
     html: `
@@ -60,7 +60,7 @@ const templates = {
     </div>
     <a href="${actionUrl}"
        style="display: inline-block; background-color: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 500; margin-top: 10px;">
-      View Challenge
+      View Update
     </a>
   </div>
   <div style="text-align: center; color: #9ca3af; font-size: 14px; margin-top: 30px;">
@@ -83,7 +83,7 @@ ${data.sender_name} sent an update for ${data.challenge_name}:
 
 "${data.message}"
 
-View Challenge: ${actionUrl}
+View Update: ${actionUrl}
 
 ---
 Unsubscribe from challenge updates: ${data.unsubscribe_url}

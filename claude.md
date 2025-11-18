@@ -1,15 +1,74 @@
 # Gritful - Claude Notes & Pinned Issues
 
-## CRITICAL: Data Safety
+## ⚠️ CRITICAL: Data Safety - READ THIS FIRST ⚠️
 
-**NEVER RUN `supabase db reset` IN PRODUCTION OR WITH REAL USER DATA!**
-- This app contains real user data that MUST NOT be lost
-- Database resets are ONLY for local development with test data
-- For production database changes:
-  - Use `supabase db push` to push migrations to remote
-  - Or apply migrations manually via Supabase Dashboard
-  - ALWAYS backup data before any schema changes
-- User data is the most valuable asset - preserve it at all costs
+### 🚨 ABSOLUTE RULE: NEVER RUN `supabase db reset` 🚨
+
+**THIS APP CONTAINS REAL USER DATA IN BOTH LOCAL AND PRODUCTION DATABASES**
+
+⛔️ **STOP! DO NOT RUN `supabase db reset` - EVER!** ⛔️
+
+This command will **PERMANENTLY DELETE ALL USER DATA**:
+- All user accounts and profiles
+- All challenges and participant data
+- All daily entries and progress tracking
+- All points, streaks, and achievements
+- ALL EMAIL HISTORY AND MESSAGES
+
+**There is NO undo. Data cannot be recovered.**
+
+### ✅ SAFE Database Migration Process
+
+**ALWAYS use these safe methods:**
+
+1. **For New Migrations** (PREFERRED METHOD - Use Supabase Dashboard):
+
+   **We apply migrations via Supabase Dashboard, NOT via CLI.**
+
+   Why? CLI migration tracking gets out of sync with dashboard changes, causing conflicts.
+
+   **Step-by-step process:**
+   1. Create migration file in `supabase/migrations/<timestamp>_name.sql`
+   2. Review the SQL carefully
+   3. Go to Supabase Dashboard → SQL Editor
+   4. Copy the migration file contents
+   5. Paste and execute in SQL Editor
+   6. Verify changes were applied successfully
+   7. Commit the migration file to git
+
+   **DO NOT use `supabase db push`** - it causes "policy already exists" errors
+
+2. **Before ANY database change:**
+   - Review the migration SQL file carefully
+   - Test on a separate test database first if possible
+   - Ensure RLS policies are correct
+   - Double-check foreign key constraints
+   - Make sure column additions use `IF NOT EXISTS` or `ADD COLUMN IF NOT EXISTS`
+
+3. **If CLI is needed (rare cases):**
+   ```bash
+   # First sync remote changes
+   supabase db pull
+
+   # Then push (only if necessary)
+   supabase db push
+   ```
+
+4. **Emergency Backup (if needed):**
+   ```bash
+   # Backup before major changes
+   supabase db dump -f backup_$(date +%Y%m%d_%H%M%S).sql
+   ```
+
+### 🎯 Key Principle
+
+**User data is irreplaceable and the most valuable asset of this application.**
+- Every user's challenge progress represents days/weeks of their effort
+- Losing this data destroys user trust permanently
+- Database changes must be additive (ADD columns, not DROP)
+- ALWAYS use migrations, NEVER manual schema changes
+
+**If in doubt, ask the user before running ANY database command.**
 
 ## Production Domain
 

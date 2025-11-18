@@ -14,7 +14,6 @@ import Link from 'next/link';
 import DeleteChallengeButton from '@/components/challenges/DeleteChallengeButton';
 import LeaveChallengeButton from '@/components/challenges/LeaveChallengeButton';
 import JoinChallengeButton from '@/components/challenges/JoinChallengeButton';
-import EmailParticipantsButton from '@/components/challenges/EmailParticipantsButton';
 import { ChallengeTabs } from '@/components/challenges/ChallengeTabs';
 
 export default async function ChallengeLayout({
@@ -86,8 +85,15 @@ export default async function ChallengeLayout({
     participantCount = count || 0;
   }
 
-  // TODO: Get unread count for Updates tab badge
-  const unreadCount = 0;
+  // Get unread count for Updates tab badge
+  let unreadCount = 0;
+  if (user && isParticipant) {
+    const { data: unreadData } = await supabase.rpc('get_unread_message_count', {
+      p_challenge_id: id,
+      p_user_id: user.id,
+    });
+    unreadCount = unreadData || 0;
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -135,12 +141,6 @@ export default async function ChallengeLayout({
                     <DropdownMenuContent align="end" className="w-48">
                       {isCreator && (
                         <>
-                          <EmailParticipantsButton
-                            challengeId={challenge.id}
-                            challengeName={challenge.name}
-                            participantCount={participantCount}
-                          />
-                          <DropdownMenuSeparator />
                           <DropdownMenuItem asChild>
                             <Link href={`/challenges/${id}/participants`} className="cursor-pointer">
                               <Users className="mr-2 h-4 w-4" />
@@ -190,12 +190,6 @@ export default async function ChallengeLayout({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">
-                    <EmailParticipantsButton
-                      challengeId={challenge.id}
-                      challengeName={challenge.name}
-                      participantCount={participantCount}
-                    />
-                    <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
                       <Link href={`/challenges/${id}/participants`} className="cursor-pointer">
                         <Users className="mr-2 h-4 w-4" />

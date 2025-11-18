@@ -146,6 +146,25 @@ export async function sendChallengeUpdate(
       return { success: false, error: 'Failed to queue emails' }
     }
 
+    // Create a message record in challenge_messages table
+    // This preserves the email content in the in-app message feed
+    const { error: messageError } = await supabase
+      .from('challenge_messages')
+      .insert({
+        challenge_id: challengeId,
+        sender_id: user.id,
+        subject: subject,
+        message: message,
+        sent_via_email: true,
+        recipient_count: queueEntries.length,
+      })
+
+    if (messageError) {
+      console.error('Error creating message record:', messageError)
+      // Don't fail the action - emails are already queued
+      // Just log the error since message creation is secondary
+    }
+
     // Trigger email processor to send emails immediately
     try {
       const processorUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/email-processor`
