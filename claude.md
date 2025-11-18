@@ -281,41 +281,120 @@ Should be able to use:
   - Instant delivery to challenge creator
   - Users must explicitly opt-in
 
-### Future: Unified Messaging System Architecture
+### Unified Messaging System Architecture
 **Vision**: Comprehensive messaging platform integrating email, in-app notifications, and direct messaging
 
-#### Phase 1: Selective Participant Emailing (Next - 2 hours)
-- [ ] **Enhance SendUpdateModal UI**
-  - Add participant checkbox list with Select All/None toggles
-  - Show participant avatars, usernames, and email status
-  - Display selection count
+#### Phase 1: Selective Participant Emailing ✅ COMPLETE
+- [x] **Enhanced SendUpdateModal UI**
+  - Participant checkbox list with Select All/Clear toggles
+  - Real-time search/filter functionality (appears for 5+ participants)
+  - Smart buttons that adapt to filtered results ("Select Filtered" vs "Select All")
+  - Selection count display showing X of Y participants selected
+  - Improved scrolling with 300px max height
+  - Component: `/components/challenges/SendUpdateModal.tsx`
 
-- [ ] **Update Backend**
-  - Modify sendChallengeUpdate to accept optional recipientUserIds[]
-  - Filter email queue based on selection
-  - Maintain backward compatibility (no recipients = all)
+- [x] **Updated Backend**
+  - Modified sendChallengeUpdate to accept optional recipientUserIds[] parameter
+  - Filters email queue based on selection with validation
+  - Maintains backward compatibility (no recipients = all participants)
+  - Server-side validation ensures recipients are active participants
+  - Location: `/app/actions/sendChallengeUpdate.ts`
 
-- [ ] **Individual Email Actions**
-  - Add email icon to participant cards/list
-  - Quick-email single participant
-  - Reuse SendUpdateModal with pre-selection
+- [x] **Individual Email Actions**
+  - EmailParticipantButton component for single participant emails
+  - Integrated into ParticipantDetailModal (creator-only, not visible to self)
+  - Pre-selects specific participant in SendUpdateModal
+  - Reuses email infrastructure
+  - Locations: `/components/challenges/EmailParticipantButton.tsx`, `/components/progress/ParticipantDetailModal.tsx`
 
-#### Phase 2: Challenge Update Center/Message Board (Future - 3-4 days)
-- [ ] **Database Schema**
-  - Create `challenge_messages` table
-  - Create `message_recipients` table with read tracking
-  - Support threading, pinning, announcements
+- [x] **Technical Decisions Made**
+  - Modal pattern appropriate for infrequent email actions
+  - Client-side search/filter for better UX (no server round-trips)
+  - Workaround for Supabase schema cache issue (fetch participants and profiles separately, merge in code)
+  - Email queue integration with existing system
+  - Validation at multiple layers (client, server, RPC function)
 
-- [ ] **Update Center UI**
-  - New tab on challenge detail page
-  - Message history with real-time updates
-  - Reply/thread functionality
-  - Rich text editor with markdown
+#### Phase 2: Challenge Update Center/Message Board (NEXT - 3-4 days)
 
-- [ ] **Integration**
-  - Email updates also create message records
-  - Dual-channel delivery (email + in-app)
-  - Notification when new messages posted
+**Research-Based Design Decisions:**
+
+**Database Schema** (Timestamp-based approach, NOT junction tables):
+```sql
+-- Main messages table
+CREATE TABLE challenge_messages (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  challenge_id UUID REFERENCES challenges(id) ON DELETE CASCADE,
+  sender_id UUID REFERENCES profiles(id),
+  subject VARCHAR(200),
+  message TEXT NOT NULL,
+  sent_via_email BOOLEAN DEFAULT false,
+  recipient_count INT DEFAULT 0,
+  is_pinned BOOLEAN DEFAULT false,
+  created_at TIMESTAMP DEFAULT NOW(),
+  edited_at TIMESTAMP,
+  parent_message_id UUID REFERENCES challenge_messages(id), -- for threading (future)
+
+  INDEX idx_challenge_messages_challenge (challenge_id, created_at DESC),
+  INDEX idx_challenge_messages_pinned (challenge_id, is_pinned, created_at DESC)
+);
+
+-- Lightweight read tracking (timestamp-based, scales better than junction tables)
+ALTER TABLE challenge_participants ADD COLUMN
+  last_message_read_at TIMESTAMP DEFAULT NOW();
+
+-- Alternative for explicit tracking of important messages (optional)
+-- Only use for pinned/important messages, not all messages
+CREATE TABLE message_read_receipts (
+  message_id UUID REFERENCES challenge_messages(id),
+  user_id UUID REFERENCES profiles(id),
+  read_at TIMESTAMP DEFAULT NOW(),
+  PRIMARY KEY (message_id, user_id)
+);
+```
+
+**Why Timestamp-Based vs Junction Tables:**
+- ✅ Scales: No millions of read-receipt rows
+- ✅ Fast queries: `WHERE created_at > last_read_at` is instant
+- ✅ Auto-cleanup: Older messages auto-marked as read
+- ✅ Flexible: Can still track important messages explicitly
+- ❌ Junction table per message: phpBB tried this, abandoned it (doesn't scale)
+
+**UI Pattern** (Feed/Timeline, NOT modal):
+- [ ] New "Updates" tab in challenge navigation (part of tab redesign)
+- [ ] Reverse-chronological feed with pagination (20 messages per page)
+- [ ] Sticky compose box at top (creators/admins only)
+- [ ] Message cards show:
+  - Sender avatar and name (link to profile)
+  - Timestamp (relative: "2 hours ago", hover shows full date)
+  - Subject line (if present, bold if unread)
+  - Message content (plain text + markdown support)
+  - Pin indicator for important messages
+  - "Sent via email to X participants" badge if applicable
+- [ ] Unread indicator badge on tab
+- [ ] "Mark all as read" button
+- [ ] Infinite scroll or pagination controls
+
+**Integration with Email System:**
+- [ ] When sending email via SendUpdateModal, also create message record
+- [ ] Set sent_via_email=true and recipient_count
+- [ ] Dual visibility: email recipients get email, all participants see in-app
+- [ ] Unread count includes messages created after last_message_read_at
+
+**Performance Optimizations:**
+- [ ] Pagination: 20 messages per page
+- [ ] Database indexes on challenge_id and created_at
+- [ ] Cache unread counts (update on message create/read)
+- [ ] Lazy load message content (summary first, expand for full)
+- [ ] Virtual scrolling for very long feeds (optional)
+
+**Implementation Steps:**
+1. Create migration for challenge_messages table and read tracking
+2. Create /app/challenges/[id]/updates page (within tab structure)
+3. Build MessageFeed component with pagination
+4. Implement PostMessageForm (reuse email modal logic where possible)
+5. Add unread count badge to Updates tab
+6. Update participant read timestamp on tab view
+7. Modify sendChallengeUpdate to create message records
 
 #### Phase 3: Direct User Messaging (Future - 1 week)
 - [ ] **Database Schema**
