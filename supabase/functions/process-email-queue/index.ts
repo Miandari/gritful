@@ -2,15 +2,16 @@
 // This runs periodically via pg_cron (every 5 minutes)
 // Non-aggressive: Only processes pending emails, respects retry limits
 
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const APP_URL = Deno.env.get('APP_URL') || 'https://www.gritful.app';
+const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const APP_URL = Deno.env.get('APP_URL') || 'https://www.gritful.app'
 
 // Batch size - process only a few at a time to avoid overload
-const BATCH_SIZE = 10;
+const BATCH_SIZE = 10
 
 interface EmailQueueItem {
   id: string;
@@ -24,21 +25,17 @@ interface EmailQueueItem {
   max_retries: number;
 }
 
-Deno.serve(async (req) => {
+serve(async (req) => {
   try {
-    // Verify this is called from Supabase (or via cron)
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }),
-        { status: 401, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
+    // Initialize Supabase client with service role (same pattern as email-processor)
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    })
 
-    // Create Supabase client with service role
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-    console.log('[Email Queue Processor] Starting batch processing...');
+    console.log('[Email Queue Processor] Starting batch processing...')
 
     // Get pending emails scheduled to be sent (oldest first)
     const { data: pendingEmails, error: fetchError } = await supabase
@@ -175,13 +172,13 @@ Deno.serve(async (req) => {
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
   } catch (error: any) {
-    console.error('[Email Queue Processor] Fatal error:', error);
+    console.error('[Email Queue Processor] Fatal error:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    )
   }
-});
+})
 
 // Email template builder (reuse templates from email-processor)
 function buildEmailTemplate(templateName: string, data: any): string {
