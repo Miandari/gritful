@@ -108,7 +108,10 @@ ALTER TABLE challenge_participants
 
 -- Trigger 1: Log daily entries to feed
 CREATE OR REPLACE FUNCTION log_entry_to_feed()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
   -- Only log when entry becomes completed (not already completed)
   -- For INSERT: log if completed
@@ -132,7 +135,8 @@ BEGIN
       'completed their daily entry',
       jsonb_build_object(
         'entry_date', NEW.entry_date,
-        'points_earned', NEW.points_earned,
+        'submitted_at', NEW.submitted_at,
+        'current_streak', cp.current_streak,
         'bonus_points', COALESCE(NEW.bonus_points, 0),
         'is_perfect_day', COALESCE(NEW.bonus_points, 0) > 0
       )
@@ -151,7 +155,10 @@ EXECUTE FUNCTION log_entry_to_feed();
 
 -- Trigger 2: Update reaction counts
 CREATE OR REPLACE FUNCTION update_reaction_count()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
   IF TG_OP = 'INSERT' THEN
     UPDATE challenge_activity_feed
@@ -173,7 +180,10 @@ EXECUTE FUNCTION update_reaction_count();
 
 -- Trigger 3: Update comment counts
 CREATE OR REPLACE FUNCTION update_comment_count()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
   IF TG_OP = 'INSERT' THEN
     UPDATE challenge_activity_feed

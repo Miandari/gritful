@@ -3,22 +3,24 @@
 import { usePathname, useRouter } from 'next/navigation'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { BarChart3, Users, Calendar, MessageSquare } from 'lucide-react'
+import { BarChart3, Users, Calendar, MessageSquare, Activity } from 'lucide-react'
 
 interface ChallengeTabsProps {
   challengeId: string
   participantCount?: number
   unreadCount?: number
+  unreadActivityCount?: number
   isParticipant: boolean
   children?: React.ReactNode
 }
 
-type TabValue = 'overview' | 'progress' | 'participants' | 'updates' | 'entries'
+type TabValue = 'overview' | 'progress' | 'participants' | 'feed' | 'updates' | 'entries'
 
 export function ChallengeTabs({
   challengeId,
   participantCount = 0,
   unreadCount = 0,
+  unreadActivityCount = 0,
   isParticipant,
   children,
 }: ChallengeTabsProps) {
@@ -29,6 +31,7 @@ export function ChallengeTabs({
   const getActiveTab = (): TabValue => {
     if (pathname.includes('/progress')) return 'progress'
     if (pathname.includes('/participants')) return 'participants'
+    if (pathname.includes('/feed')) return 'feed'
     if (pathname.includes('/updates')) return 'updates'
     if (pathname.includes('/entries')) return 'entries'
     return 'overview'
@@ -49,6 +52,9 @@ export function ChallengeTabs({
       case 'participants':
         router.push(`${baseUrl}/participants`)
         break
+      case 'feed':
+        router.push(`${baseUrl}/feed`)
+        break
       case 'updates':
         router.push(`${baseUrl}/updates`)
         break
@@ -60,7 +66,7 @@ export function ChallengeTabs({
 
   return (
     <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-      <TabsList className="grid w-full grid-cols-5 h-auto">
+      <TabsList className="grid w-full grid-cols-6 h-auto">
         <TabsTrigger value="overview" className="flex-col sm:flex-row gap-1 px-2 py-2">
           <BarChart3 className="h-4 w-4 sm:mr-2" />
           <div className="flex items-center gap-1">
@@ -85,6 +91,18 @@ export function ChallengeTabs({
             {participantCount > 0 && (
               <Badge variant="secondary" className="text-xs">
                 {participantCount}
+              </Badge>
+            )}
+          </div>
+        </TabsTrigger>
+
+        <TabsTrigger value="feed" className="flex-col sm:flex-row gap-1 px-2 py-2 relative">
+          <Activity className="h-4 w-4 sm:mr-2" />
+          <div className="flex items-center gap-1">
+            <span className="text-xs sm:text-sm">Feed</span>
+            {unreadActivityCount > 0 && (
+              <Badge variant="destructive" className="text-xs">
+                {unreadActivityCount}
               </Badge>
             )}
           </div>

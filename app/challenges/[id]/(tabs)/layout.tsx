@@ -121,6 +121,16 @@ export default async function ChallengeLayout({
     unreadCount = unreadData || 0;
   }
 
+  // Get unread activity count for Feed tab badge
+  let unreadActivityCount = 0;
+  if (user && isParticipant) {
+    const { data: unreadActivityData } = await supabase.rpc('get_unread_activity_count', {
+      p_challenge_id: id,
+      p_user_id: user.id,
+    });
+    unreadActivityCount = unreadActivityData || 0;
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-4xl px-4 sm:px-6 py-6 sm:py-8">
@@ -249,6 +259,7 @@ export default async function ChallengeLayout({
           challengeId={id}
           participantCount={participantCount}
           unreadCount={unreadCount}
+          unreadActivityCount={unreadActivityCount}
           isParticipant={isParticipant}
         >
           {children}
