@@ -9,12 +9,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useChallengeWizardStore } from '@/lib/stores/challengeStore';
 import { addDays, format } from 'date-fns';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Infinity } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const step1Schema = z.object({
   name: z.string().min(3, 'Challenge name must be at least 3 characters').max(100),
   description: z.string().max(500).optional(),
-  duration_days: z.number().min(1).max(365),
+  duration_days: z.number().min(1).max(365).nullable(),
+  is_ongoing: z.boolean().default(false),
   starts_at: z.string().refine((date) => {
     // Parse the date string (YYYY-MM-DD) into components
     const [year, month, day] = date.split('-').map(Number);
@@ -26,6 +28,12 @@ const step1Schema = z.object({
     // Allow today or future dates
     return startDate.getTime() >= today.getTime();
   }, 'Start date cannot be before today'),
+}).refine((data) => {
+  // Either ongoing or has a valid duration
+  return data.is_ongoing || (data.duration_days !== null && data.duration_days > 0);
+}, {
+  message: 'Duration is required for non-ongoing challenges',
+  path: ['duration_days'],
 });
 
 type Step1FormData = z.infer<typeof step1Schema>;
@@ -42,27 +50,42 @@ export function Step1BasicInfo({ onNext, onBackToTemplates }: Step1BasicInfoProp
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<Step1FormData>({
     resolver: zodResolver(step1Schema),
     defaultValues: {
       name: formData.name || '',
       description: formData.description || '',
-      duration_days: formData.duration_days || 30,
+      duration_days: formData.duration_days ?? 30,
+      is_ongoing: formData.is_ongoing ?? false,
       starts_at: formData.starts_at || format(new Date(), 'yyyy-MM-dd'),
     },
   });
 
   const watchDuration = watch('duration_days');
   const watchStartDate = watch('starts_at');
+  const watchIsOngoing = watch('is_ongoing');
 
   const calculateEndDate = () => {
+    if (watchIsOngoing) {
+      return 'Ongoing - no end date';
+    }
     if (watchStartDate && watchDuration) {
       const start = new Date(watchStartDate);
       const end = addDays(start, watchDuration - 1);
       return format(end, 'MMMM d, yyyy');
     }
     return '';
+  };
+
+  const handleOngoingChange = (checked: boolean) => {
+    setValue('is_ongoing', checked);
+    if (checked) {
+      setValue('duration_days', null);
+    } else {
+      setValue('duration_days', 30);
+    }
   };
 
   const onSubmit = (data: Step1FormData) => {
@@ -97,23 +120,45 @@ export function Step1BasicInfo({ onNext, onBackToTemplates }: Step1BasicInfoProp
         )}
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-2">
-        <div>
-          <Label htmlFor="duration_days">Duration (days) *</Label>
-          <Input
-            id="duration_days"
-            type="number"
-            {...register('duration_days', { valueAsNumber: true })}
-            min={1}
-            max={365}
-            className="mt-1"
-          />
-          {errors.duration_days && (
-            <p className="mt-1 text-sm text-red-600">{errors.duration_days.message}</p>
-          )}
+      {/* Ongoing toggle */}
+      <div className="flex items-start space-x-3 rounded-lg border p-4">
+        <Checkbox
+          id="is_ongoing"
+          checked={watchIsOngoing}
+          onCheckedChange={handleOngoingChange}
+          className="mt-0.5"
+        />
+        <div className="flex-1">
+          <Label htmlFor="is_ongoing" className="font-medium cursor-pointer flex items-center gap-2">
+            <Infinity className="h-4 w-4" />
+            Ongoing challenge (no end date)
+          </Label>
+          <p className="text-sm text-muted-foreground mt-1">
+            The challenge continues until you manually end it. Great for habits you want to maintain indefinitely.
+          </p>
         </div>
+      </div>
 
-        <div>
+      <div className="grid gap-6 sm:grid-cols-2">
+        {/* Duration input - hidden when ongoing */}
+        {!watchIsOngoing && (
+          <div>
+            <Label htmlFor="duration_days">Duration (days) *</Label>
+            <Input
+              id="duration_days"
+              type="number"
+              {...register('duration_days', { valueAsNumber: true })}
+              min={1}
+              max={365}
+              className="mt-1"
+            />
+            {errors.duration_days && (
+              <p className="mt-1 text-sm text-red-600">{errors.duration_days.message}</p>
+            )}
+          </div>
+        )}
+
+        <div className={watchIsOngoing ? 'sm:col-span-2' : ''}>
           <Label htmlFor="starts_at">Start Date *</Label>
           <Input
             id="starts_at"
@@ -128,14 +173,28 @@ export function Step1BasicInfo({ onNext, onBackToTemplates }: Step1BasicInfoProp
         </div>
       </div>
 
-      {watchStartDate && watchDuration && (
-        <div className="rounded-lg bg-blue-50 p-4">
-          <p className="text-sm text-blue-900">
-            <span className="font-semibold">Challenge Duration:</span> {watchDuration} days
-          </p>
-          <p className="text-sm text-blue-900">
-            <span className="font-semibold">Ends on:</span> {calculateEndDate()}
-          </p>
+      {watchStartDate && (watchDuration || watchIsOngoing) && (
+        <div className={`rounded-lg p-4 ${watchIsOngoing ? 'bg-purple-50' : 'bg-blue-50'}`}>
+          {watchIsOngoing ? (
+            <>
+              <p className="text-sm text-purple-900 flex items-center gap-2">
+                <Infinity className="h-4 w-4" />
+                <span className="font-semibold">Ongoing Challenge</span>
+              </p>
+              <p className="text-sm text-purple-900 mt-1">
+                This challenge will continue until you manually end it for all participants.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-blue-900">
+                <span className="font-semibold">Challenge Duration:</span> {watchDuration} days
+              </p>
+              <p className="text-sm text-blue-900">
+                <span className="font-semibold">Ends on:</span> {calculateEndDate()}
+              </p>
+            </>
+          )}
         </div>
       )}
 

@@ -9,13 +9,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Settings, MoreVertical, Users } from 'lucide-react';
+import { Settings, MoreVertical, Users, Infinity } from 'lucide-react';
 import Link from 'next/link';
 import DeleteChallengeButton from '@/components/challenges/DeleteChallengeButton';
 import LeaveChallengeButton from '@/components/challenges/LeaveChallengeButton';
 import { AddOnetimeTaskMenuItem } from '@/components/challenges/AddOnetimeTaskMenuItem';
 import JoinChallengeButton from '@/components/challenges/JoinChallengeButton';
 import { ChallengeTabs } from '@/components/challenges/ChallengeTabs';
+import { EndChallengeButton } from '@/components/challenges/EndChallengeButton';
 
 export default async function ChallengeLayout({
   children,
@@ -147,7 +148,14 @@ export default async function ChallengeLayout({
                 <Badge variant={challenge.is_public ? 'default' : 'secondary'}>
                   {challenge.is_public ? 'Public' : 'Private'}
                 </Badge>
-                <Badge variant="outline">{challenge.duration_days} days</Badge>
+                {challenge.ends_at === null ? (
+                  <Badge variant="outline" className="flex items-center gap-1">
+                    <Infinity className="h-3 w-3" />
+                    Ongoing
+                  </Badge>
+                ) : (
+                  <Badge variant="outline">{challenge.duration_days} days</Badge>
+                )}
                 {isCreator && <Badge variant="secondary">You created this</Badge>}
                 {isParticipant && !isCreator && <Badge variant="secondary">Participating</Badge>}
               </div>
@@ -196,6 +204,17 @@ export default async function ChallengeLayout({
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
+                          {challenge.ends_at === null && (
+                            <DropdownMenuItem asChild>
+                              <div className="w-full">
+                                <EndChallengeButton
+                                  challengeId={challenge.id}
+                                  isOngoing={true}
+                                  isCreator={true}
+                                />
+                              </div>
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem asChild>
                             <div className="w-full">
                               <DeleteChallengeButton
@@ -250,6 +269,17 @@ export default async function ChallengeLayout({
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
+                    {challenge.ends_at === null && (
+                      <DropdownMenuItem asChild>
+                        <div className="w-full">
+                          <EndChallengeButton
+                            challengeId={challenge.id}
+                            isOngoing={true}
+                            isCreator={true}
+                          />
+                        </div>
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem asChild>
                       <div className="w-full">
                         <DeleteChallengeButton

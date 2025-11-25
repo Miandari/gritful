@@ -7,6 +7,7 @@ import Link from 'next/link';
 import CopyInviteCodeButton from '@/components/challenges/CopyInviteCodeButton';
 import { AddOnetimeTaskButton } from '@/components/challenges/AddOnetimeTaskButton';
 import { DeadlineBadge } from '@/components/daily-entry/DeadlineBadge';
+import { Infinity } from 'lucide-react';
 
 export default async function ChallengeOverviewPage({
   params
@@ -75,7 +76,11 @@ export default async function ChallengeOverviewPage({
         (new Date().getTime() - new Date(challenge.starts_at).getTime()) /
         (1000 * 60 * 60 * 24)
       );
-      const maxDays = Math.min(Math.max(totalDays, 0), challenge.duration_days);
+      // For ongoing challenges, use totalDays directly; for fixed duration, cap at duration_days
+      const isOngoing = challenge.ends_at === null;
+      const maxDays = isOngoing
+        ? Math.max(totalDays, 0)
+        : Math.min(Math.max(totalDays, 0), challenge.duration_days || 0);
 
       myStats = {
         currentStreak: myParticipation.current_streak || 0,
@@ -140,13 +145,26 @@ export default async function ChallengeOverviewPage({
                 <div className="text-xs text-muted-foreground">personal best</div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-sm text-muted-foreground">Days Left</div>
-                <div className="text-2xl font-bold">{Math.max(0, challenge.duration_days - myStats.totalDays)}</div>
-                <div className="text-xs text-muted-foreground">to complete</div>
-              </CardContent>
-            </Card>
+            {challenge.ends_at === null ? (
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-sm text-muted-foreground">Active Days</div>
+                  <div className="text-2xl font-bold flex items-center gap-1">
+                    <Infinity className="h-5 w-5" />
+                    {myStats.totalDays}
+                  </div>
+                  <div className="text-xs text-muted-foreground">ongoing</div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-sm text-muted-foreground">Days Left</div>
+                  <div className="text-2xl font-bold">{Math.max(0, (challenge.duration_days || 0) - myStats.totalDays)}</div>
+                  <div className="text-xs text-muted-foreground">to complete</div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       )}
@@ -176,7 +194,14 @@ export default async function ChallengeOverviewPage({
             </div>
             <div>
               <span className="text-sm font-medium text-muted-foreground">End Date:</span>
-              <p>{format(new Date(challenge.ends_at), 'MMMM d, yyyy')}</p>
+              {challenge.ends_at ? (
+                <p>{format(new Date(challenge.ends_at), 'MMMM d, yyyy')}</p>
+              ) : (
+                <p className="flex items-center gap-1">
+                  <Infinity className="h-4 w-4" />
+                  Ongoing
+                </p>
+              )}
             </div>
             <div>
               <span className="text-sm font-medium text-muted-foreground">Failure Mode:</span>
@@ -203,7 +228,9 @@ export default async function ChallengeOverviewPage({
               const onetimeTasks = allMetrics.filter((m: any) => m.frequency === 'onetime');
               const now = new Date();
               now.setHours(0, 0, 0, 0);
-              const isActive = now >= new Date(challenge.starts_at) && now <= new Date(challenge.ends_at);
+              const startDate = new Date(challenge.starts_at);
+              const endDate = challenge.ends_at ? new Date(challenge.ends_at) : null;
+              const isActive = now >= startDate && (endDate === null || now <= endDate);
 
               // Helper to get task status badge
               const getTaskDateBadge = (metric: any) => {

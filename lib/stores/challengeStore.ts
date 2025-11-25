@@ -26,6 +26,7 @@ const initialState = {
     name: '',
     description: '',
     duration_days: 30,
+    is_ongoing: false,
     starts_at: new Date().toISOString().split('T')[0],
     is_public: true,
     is_template: false,

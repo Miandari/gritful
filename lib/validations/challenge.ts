@@ -45,7 +45,10 @@ export const challengeFormSchema = z.object({
   // Step 1: Basic Info
   name: z.string().min(3, 'Challenge name must be at least 3 characters').max(100),
   description: z.string().max(500).optional(),
-  duration_days: z.number().min(1).max(365).default(30),
+  // Duration is nullable for ongoing challenges
+  duration_days: z.number().min(1).max(365).nullable().default(30),
+  // Flag to indicate this is an ongoing challenge (no end date)
+  is_ongoing: z.boolean().default(false),
   starts_at: z.string().refine((date) => {
     const startDate = new Date(date);
     const today = new Date();

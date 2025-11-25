@@ -9,7 +9,7 @@ import { format, addDays } from 'date-fns';
 import { createChallenge } from '@/app/actions/challenges';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Infinity } from 'lucide-react';
 
 interface Step4ReviewProps {
   onPrev: () => void;
@@ -21,6 +21,9 @@ export function Step4Review({ onPrev }: Step4ReviewProps) {
   const { formData, metrics, reset } = useChallengeWizardStore();
 
   const calculateEndDate = () => {
+    if (formData.is_ongoing) {
+      return 'Ongoing';
+    }
     if (formData.starts_at && formData.duration_days) {
       const start = new Date(formData.starts_at);
       const end = addDays(start, formData.duration_days - 1);
@@ -104,17 +107,26 @@ export function Step4Review({ onPrev }: Step4ReviewProps) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <span className="text-sm font-medium text-gray-600">Duration:</span>
-              <p>{formData.duration_days} days</p>
+              {formData.is_ongoing ? (
+                <p className="flex items-center gap-1">
+                  <Infinity className="h-4 w-4" />
+                  Ongoing
+                </p>
+              ) : (
+                <p>{formData.duration_days} days</p>
+              )}
             </div>
             <div>
               <span className="text-sm font-medium text-gray-600">Start Date:</span>
               <p>{formData.starts_at && format(new Date(formData.starts_at), 'MMM d, yyyy')}</p>
             </div>
           </div>
-          <div>
-            <span className="text-sm font-medium text-gray-600">End Date:</span>
-            <p>{calculateEndDate()}</p>
-          </div>
+          {!formData.is_ongoing && (
+            <div>
+              <span className="text-sm font-medium text-gray-600">End Date:</span>
+              <p>{calculateEndDate()}</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

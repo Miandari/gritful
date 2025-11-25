@@ -29,9 +29,14 @@ export async function createChallenge(data: ChallengeFormData) {
   }
 
   try {
-    // Calculate end date
+    // Calculate end date (null for ongoing challenges)
     const startDate = new Date(data.starts_at);
-    const endDate = addDays(startDate, data.duration_days - 1);
+    const isOngoing = data.is_ongoing === true;
+    let endDate: Date | null = null;
+
+    if (!isOngoing && data.duration_days) {
+      endDate = addDays(startDate, data.duration_days - 1);
+    }
 
     // Generate invite code if private
     const inviteCode = !data.is_public ? generateInviteCode() : null;
@@ -43,9 +48,9 @@ export async function createChallenge(data: ChallengeFormData) {
         creator_id: user.id,
         name: data.name,
         description: data.description,
-        duration_days: data.duration_days,
+        duration_days: isOngoing ? null : data.duration_days,
         starts_at: startDate.toISOString().split('T')[0],
-        ends_at: endDate.toISOString().split('T')[0],
+        ends_at: endDate ? endDate.toISOString().split('T')[0] : null,
         is_public: data.is_public,
         is_template: data.is_template,
         invite_code: inviteCode,

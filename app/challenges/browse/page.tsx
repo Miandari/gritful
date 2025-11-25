@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import { Search, Lock } from 'lucide-react';
+import { Search, Lock, Infinity } from 'lucide-react';
 import RequestToJoinButton from '@/components/challenges/RequestToJoinButton';
 
 export default async function BrowseChallengesPage({
@@ -97,10 +97,13 @@ export default async function BrowseChallengesPage({
   const getChallengeStatus = (challenge: any) => {
     const now = new Date();
     const startDate = new Date(challenge.starts_at);
-    const endDate = new Date(challenge.ends_at);
+    const endDate = challenge.ends_at ? new Date(challenge.ends_at) : null;
 
     if (now < startDate) {
       return { label: 'Upcoming', variant: 'secondary' as const };
+    } else if (endDate === null) {
+      // Ongoing challenge (no end date)
+      return { label: 'Ongoing', variant: 'default' as const };
     } else if (now > endDate) {
       return { label: 'Completed', variant: 'outline' as const };
     } else {
@@ -148,11 +151,14 @@ export default async function BrowseChallengesPage({
       <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
         {challengesWithCounts.map((challenge: any) => {
           const status = getChallengeStatus(challenge);
+          const isOngoing = challenge.ends_at === null;
           const daysElapsed = Math.floor(
             (new Date().getTime() - new Date(challenge.starts_at).getTime()) /
               (1000 * 60 * 60 * 24)
           );
-          const progress = Math.min(100, Math.max(0, (daysElapsed / challenge.duration_days) * 100));
+          const progress = isOngoing
+            ? null
+            : Math.min(100, Math.max(0, (daysElapsed / challenge.duration_days) * 100));
 
           return (
             <Link key={challenge.id} href={`/challenges/${challenge.id}`}>
@@ -179,7 +185,16 @@ export default async function BrowseChallengesPage({
 
                     <div className="flex items-center justify-between text-sm gap-2">
                       <span className="text-muted-foreground shrink-0">Duration</span>
-                      <span className="font-medium">{challenge.duration_days} days</span>
+                      <span className="font-medium">
+                        {isOngoing ? (
+                          <span className="flex items-center gap-1">
+                            <Infinity className="h-3 w-3" />
+                            Ongoing
+                          </span>
+                        ) : (
+                          `${challenge.duration_days} days`
+                        )}
+                      </span>
                     </div>
 
                     <div className="flex items-center justify-between text-sm gap-2">
@@ -187,7 +202,7 @@ export default async function BrowseChallengesPage({
                       <span className="font-medium">{challenge.participantCount}</span>
                     </div>
 
-                    {status.label === 'Active' && (
+                    {status.label === 'Active' && !isOngoing && (
                       <>
                         <div className="flex items-center justify-between text-sm gap-2">
                           <span className="text-muted-foreground shrink-0">Progress</span>
@@ -203,6 +218,15 @@ export default async function BrowseChallengesPage({
                           />
                         </div>
                       </>
+                    )}
+
+                    {status.label === 'Ongoing' && (
+                      <div className="flex items-center justify-between text-sm gap-2">
+                        <span className="text-muted-foreground shrink-0">Active for</span>
+                        <span className="font-medium shrink-0">
+                          {daysElapsed + 1} day{daysElapsed !== 0 ? 's' : ''}
+                        </span>
+                      </div>
                     )}
 
                     {status.label === 'Upcoming' && (

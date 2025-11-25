@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, Calendar, Users, TrendingUp, Plus, Search } from 'lucide-react';
+import { Trophy, Calendar, Users, TrendingUp, Plus, Search, Infinity } from 'lucide-react';
 
 export default async function ChallengesPage() {
   const supabase = await createClient();
@@ -83,12 +83,12 @@ export default async function ChallengesPage() {
     .in('participant_id', activeChallenges.map(p => p.id))
     .eq('entry_date', todayStr);
 
-  // Fetch available challenges for discovery
+  // Fetch available challenges for discovery (include ongoing challenges)
   const { data: availableChallenges } = await supabase
     .from('challenges')
     .select('*')
     .lte('starts_at', new Date().toISOString())
-    .gte('ends_at', new Date().toISOString())
+    .or(`ends_at.is.null,ends_at.gte.${new Date().toISOString().split('T')[0]}`)
     .order('created_at', { ascending: false })
     .limit(6);
 
@@ -182,7 +182,8 @@ export default async function ChallengesPage() {
                     (today.getTime() - startDate.getTime()) /
                       (1000 * 60 * 60 * 24)
                   ));
-                  const progress = Math.min(100, (daysElapsed / challenge.duration_days) * 100);
+                  const isOngoing = challenge.ends_at === null;
+                  const progress = isOngoing ? null : Math.min(100, (daysElapsed / challenge.duration_days) * 100);
                   const todayEntry = todayEntries?.find(e => e.participant_id === participation.id);
 
                   return (
@@ -195,25 +196,37 @@ export default async function ChallengesPage() {
                               {challenge.description || 'No description'}
                             </CardDescription>
                           </div>
-                          <Badge variant={challenge.is_public ? 'default' : 'secondary'} className="ml-2 shrink-0">
-                            {challenge.is_public ? 'Public' : 'Private'}
-                          </Badge>
+                          {isOngoing ? (
+                            <Badge variant="outline" className="ml-2 shrink-0 flex items-center gap-1">
+                              <Infinity className="h-3 w-3" />
+                              Ongoing
+                            </Badge>
+                          ) : (
+                            <Badge variant={challenge.is_public ? 'default' : 'secondary'} className="ml-2 shrink-0">
+                              {challenge.is_public ? 'Public' : 'Private'}
+                            </Badge>
+                          )}
                         </div>
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-3">
                           <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">Progress</span>
+                            <span className="text-muted-foreground">{isOngoing ? 'Active' : 'Progress'}</span>
                             <span className="font-medium">
-                              Day {Math.min(daysElapsed + 1, challenge.duration_days)} of {challenge.duration_days}
+                              {isOngoing
+                                ? `Day ${daysElapsed + 1}`
+                                : `Day ${Math.min(daysElapsed + 1, challenge.duration_days)} of ${challenge.duration_days}`
+                              }
                             </span>
                           </div>
-                          <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-                            <div
-                              className="h-full bg-blue-600 transition-all"
-                              style={{ width: `${progress}%` }}
-                            />
-                          </div>
+                          {!isOngoing && (
+                            <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                              <div
+                                className="h-full bg-blue-600 transition-all"
+                                style={{ width: `${progress}%` }}
+                              />
+                            </div>
+                          )}
                           <div className="grid grid-cols-3 gap-2 text-sm">
                             <div>
                               <div className="text-muted-foreground text-xs">Points</div>
@@ -287,7 +300,16 @@ export default async function ChallengesPage() {
                               <Calendar className="mr-1 h-4 w-4" />
                               Duration
                             </div>
-                            <span className="font-medium">{challenge.duration_days} days</span>
+                            <span className="font-medium">
+                              {challenge.ends_at === null ? (
+                                <span className="flex items-center gap-1">
+                                  <Infinity className="h-3 w-3" />
+                                  Ongoing
+                                </span>
+                              ) : (
+                                `${challenge.duration_days} days`
+                              )}
+                            </span>
                           </div>
                           <div className="flex items-center justify-between text-sm">
                             <div className="flex items-center text-muted-foreground">
@@ -318,9 +340,7 @@ export default async function ChallengesPage() {
           </h2>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {discoverChallenges.slice(0, 6).map((challenge: any) => {
-              const startDate = new Date(challenge.starts_at);
-              const endDate = new Date(challenge.ends_at);
-              const today = new Date();
+              const isOngoing = challenge.ends_at === null;
 
               return (
                 <Link key={challenge.id} href={`/challenges/${challenge.id}`}>
@@ -333,9 +353,16 @@ export default async function ChallengesPage() {
                             {challenge.description || 'No description'}
                           </CardDescription>
                         </div>
-                        <Badge variant={challenge.is_public ? 'default' : 'secondary'} className="ml-2 shrink-0">
-                          {challenge.is_public ? 'Public' : 'Private'}
-                        </Badge>
+                        {isOngoing ? (
+                          <Badge variant="outline" className="ml-2 shrink-0 flex items-center gap-1">
+                            <Infinity className="h-3 w-3" />
+                            Ongoing
+                          </Badge>
+                        ) : (
+                          <Badge variant={challenge.is_public ? 'default' : 'secondary'} className="ml-2 shrink-0">
+                            {challenge.is_public ? 'Public' : 'Private'}
+                          </Badge>
+                        )}
                       </div>
                     </CardHeader>
                     <CardContent>
@@ -345,7 +372,16 @@ export default async function ChallengesPage() {
                             <Calendar className="mr-1 h-4 w-4" />
                             Duration
                           </div>
-                          <span className="font-medium">{challenge.duration_days} days</span>
+                          <span className="font-medium">
+                            {isOngoing ? (
+                              <span className="flex items-center gap-1">
+                                <Infinity className="h-3 w-3" />
+                                Ongoing
+                              </span>
+                            ) : (
+                              `${challenge.duration_days} days`
+                            )}
+                          </span>
                         </div>
                         <Button asChild size="sm" variant="outline" className="w-full mt-2">
                           <Link href={`/challenges/${challenge.id}`}>

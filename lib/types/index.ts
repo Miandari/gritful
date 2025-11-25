@@ -52,7 +52,7 @@ export interface Challenge {
   creator_id: string;
   name: string;
   description: string | null;
-  duration_days: number;
+  duration_days: number | null; // null for ongoing challenges
   is_public: boolean;
   is_template: boolean;
   invite_code: string | null;
@@ -62,7 +62,8 @@ export interface Challenge {
   creator_settings: Record<string, any>;
   created_at: string;
   starts_at: string;
-  ends_at: string;
+  ends_at: string | null; // null for ongoing challenges
+  ended_at?: string | null; // when creator manually ended an ongoing challenge
 }
 
 export interface ChallengeParticipant {

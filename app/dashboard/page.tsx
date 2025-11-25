@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { TodayProgressCard } from '@/components/dashboard/TodayProgressCard';
 import { QuickStatsWidget } from '@/components/dashboard/QuickStatsWidget';
 import { DiscoverChallengesWidget } from '@/components/dashboard/DiscoverChallengesWidget';
-import { Trophy, TrendingUp, Target } from 'lucide-react';
+import { Trophy, TrendingUp, Target, Infinity } from 'lucide-react';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -91,12 +91,12 @@ export default async function DashboardPage() {
     }
   }
 
-  // Fetch featured challenges (both public and private) for sidebar
+  // Fetch featured challenges (both public and private) for sidebar - include ongoing challenges
   const { data: featuredChallenges } = await supabase
     .from('challenges')
     .select('*')
     .lte('starts_at', new Date().toISOString())
-    .gte('ends_at', new Date().toISOString())
+    .or(`ends_at.is.null,ends_at.gte.${new Date().toISOString().split('T')[0]}`)
     .order('created_at', { ascending: false })
     .limit(10);
 
@@ -208,31 +208,47 @@ export default async function DashboardPage() {
                     (today.getTime() - startDate.getTime()) /
                       (1000 * 60 * 60 * 24)
                   ));
-                  const progress = Math.min(100, (daysElapsed / challenge.duration_days) * 100);
+                  const isOngoing = challenge.ends_at === null;
+                  const progress = isOngoing ? null : Math.min(100, (daysElapsed / challenge.duration_days) * 100);
                   const todayEntry = todayEntries?.find(e => e.participant_id === participation.id);
 
                   return (
                     <Card key={participation.id} className="transition-shadow hover:shadow-lg">
                       <CardHeader>
-                        <CardTitle className="line-clamp-1">{challenge.name}</CardTitle>
-                        <CardDescription className="line-clamp-2">
-                          {challenge.description || 'No description'}
-                        </CardDescription>
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            <CardTitle className="line-clamp-1">{challenge.name}</CardTitle>
+                            <CardDescription className="line-clamp-2">
+                              {challenge.description || 'No description'}
+                            </CardDescription>
+                          </div>
+                          {isOngoing && (
+                            <Badge variant="outline" className="ml-2 shrink-0 flex items-center gap-1">
+                              <Infinity className="h-3 w-3" />
+                              Ongoing
+                            </Badge>
+                          )}
+                        </div>
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-3">
                           <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">Progress</span>
+                            <span className="text-muted-foreground">{isOngoing ? 'Active' : 'Progress'}</span>
                             <span className="font-medium">
-                              Day {Math.min(daysElapsed + 1, challenge.duration_days)} of {challenge.duration_days}
+                              {isOngoing
+                                ? `Day ${daysElapsed + 1}`
+                                : `Day ${Math.min(daysElapsed + 1, challenge.duration_days)} of ${challenge.duration_days}`
+                              }
                             </span>
                           </div>
-                          <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-                            <div
-                              className="h-full bg-blue-600 transition-all"
-                              style={{ width: `${progress}%` }}
-                            />
-                          </div>
+                          {!isOngoing && (
+                            <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                              <div
+                                className="h-full bg-blue-600 transition-all"
+                                style={{ width: `${progress}%` }}
+                              />
+                            </div>
+                          )}
                           <div className="grid grid-cols-3 gap-2 text-sm">
                             <div>
                               <div className="text-muted-foreground text-xs">Points</div>
@@ -329,7 +345,14 @@ export default async function DashboardPage() {
                         {challenge.is_public ? 'Public' : 'Private'}
                       </Badge>
                       <span className="text-sm text-muted-foreground">
-                        {challenge.duration_days} days
+                        {challenge.ends_at === null ? (
+                          <span className="flex items-center gap-1">
+                            <Infinity className="h-3 w-3" />
+                            Ongoing
+                          </span>
+                        ) : (
+                          `${challenge.duration_days} days`
+                        )}
                       </span>
                     </div>
                   </CardContent>
