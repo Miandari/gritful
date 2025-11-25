@@ -194,47 +194,100 @@ export default async function ChallengeOverviewPage({
             <CardDescription>What you&apos;ll track during this challenge</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Daily Tasks */}
+            {/* Tasks grouped by frequency */}
             {(() => {
-              const dailyTasks = (challenge.metrics as any[])?.filter(
-                (m: any) => m.frequency !== 'onetime'
-              ) || [];
-              const onetimeTasks = (challenge.metrics as any[])?.filter(
-                (m: any) => m.frequency === 'onetime'
-              ) || [];
+              const allMetrics = (challenge.metrics as any[]) || [];
+              const dailyTasks = allMetrics.filter((m: any) => m.frequency === 'daily' || !m.frequency);
+              const weeklyTasks = allMetrics.filter((m: any) => m.frequency === 'weekly');
+              const monthlyTasks = allMetrics.filter((m: any) => m.frequency === 'monthly');
+              const onetimeTasks = allMetrics.filter((m: any) => m.frequency === 'onetime');
               const now = new Date();
+              now.setHours(0, 0, 0, 0);
               const isActive = now >= new Date(challenge.starts_at) && now <= new Date(challenge.ends_at);
+
+              // Helper to get task status badge
+              const getTaskDateBadge = (metric: any) => {
+                if (!metric.starts_at && !metric.ends_at) return null;
+
+                const startDate = metric.starts_at ? new Date(metric.starts_at) : null;
+                const endDate = metric.ends_at ? new Date(metric.ends_at) : null;
+                if (startDate) startDate.setHours(0, 0, 0, 0);
+                if (endDate) endDate.setHours(23, 59, 59, 999);
+
+                // Task hasn't started yet
+                if (startDate && now < startDate) {
+                  return (
+                    <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
+                      Starts {startDate.toLocaleDateString()}
+                    </Badge>
+                  );
+                }
+
+                // Task has ended
+                if (endDate && now > endDate) {
+                  return (
+                    <Badge variant="outline" className="text-xs text-muted-foreground">
+                      Ended {endDate.toLocaleDateString()}
+                    </Badge>
+                  );
+                }
+
+                // Task is active with a custom end date
+                if (endDate) {
+                  return (
+                    <Badge variant="outline" className="text-xs text-green-600 border-green-300">
+                      Until {endDate.toLocaleDateString()}
+                    </Badge>
+                  );
+                }
+
+                return null;
+              };
+
+              // Reusable function to render a task list
+              const renderTaskList = (tasks: any[], title: string, showFrequencyBadge?: boolean) => {
+                if (tasks.length === 0) return null;
+                return (
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground mb-3">
+                      {title} ({tasks.length})
+                    </h4>
+                    <div className="space-y-2">
+                      {tasks.map((metric: any, index: number) => (
+                        <div key={metric.id} className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm text-muted-foreground">{index + 1}.</span>
+                          <Link
+                            href={`/challenges/${challenge.id}/entries`}
+                            className="font-medium text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 hover:underline underline-offset-2 transition-colors"
+                          >
+                            {metric.name}
+                          </Link>
+                          <Badge variant="secondary" className="text-xs">
+                            {metric.type}
+                          </Badge>
+                          {metric.required && (
+                            <Badge variant="outline" className="text-xs">
+                              Required
+                            </Badge>
+                          )}
+                          {metric.points && (
+                            <Badge variant="outline" className="text-xs">
+                              {metric.points} pts
+                            </Badge>
+                          )}
+                          {getTaskDateBadge(metric)}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              };
 
               return (
                 <>
-                  {dailyTasks.length > 0 && (
-                    <div>
-                      <h4 className="text-sm font-medium text-muted-foreground mb-3">
-                        Daily Tasks ({dailyTasks.length})
-                      </h4>
-                      <div className="space-y-2">
-                        {dailyTasks.map((metric: any, index: number) => (
-                          <div key={metric.id} className="flex items-center gap-2">
-                            <span className="text-sm text-muted-foreground">{index + 1}.</span>
-                            <Link
-                              href={`/challenges/${challenge.id}/entries`}
-                              className="font-medium text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 hover:underline underline-offset-2 transition-colors"
-                            >
-                              {metric.name}
-                            </Link>
-                            <Badge variant="secondary" className="text-xs">
-                              {metric.type}
-                            </Badge>
-                            {metric.required && (
-                              <Badge variant="outline" className="text-xs">
-                                Required
-                              </Badge>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  {renderTaskList(dailyTasks, 'Daily Tasks')}
+                  {renderTaskList(weeklyTasks, 'Weekly Tasks')}
+                  {renderTaskList(monthlyTasks, 'Monthly Tasks')}
 
                   {/* One-time Tasks */}
                   <div>

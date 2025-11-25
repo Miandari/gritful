@@ -15,11 +15,21 @@ interface OnetimeCompletion {
   value: any;
 }
 
+interface PeriodicCompletion {
+  task_id: string;
+  frequency: 'weekly' | 'monthly';
+  period_start: string;
+  period_end: string;
+  completed_at: string;
+  value: any;
+}
+
 interface EntriesClientProps {
   challenge: any;
   participantId: string;
   entries: any[];
   onetimeCompletions: OnetimeCompletion[];
+  periodicCompletions: PeriodicCompletion[];
   challengeStartDate: Date;
   challengeEndDate: Date;
 }
@@ -29,6 +39,7 @@ export default function EntriesClient({
   participantId,
   entries,
   onetimeCompletions,
+  periodicCompletions,
   challengeStartDate,
   challengeEndDate,
 }: EntriesClientProps) {
@@ -106,6 +117,7 @@ export default function EntriesClient({
                 existingEntry={selectedEntry || null}
                 targetDate={selectedDate}
                 onetimeCompletions={onetimeCompletions}
+                periodicCompletions={periodicCompletions}
               />
             </CardContent>
           </Card>

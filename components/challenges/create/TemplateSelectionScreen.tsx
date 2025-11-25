@@ -45,7 +45,7 @@ export function TemplateSelectionScreen({ onSelectTemplate }: TemplateSelectionS
                 <div>
                   <h3 className="font-semibold text-lg">Start from Scratch</h3>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Create a custom challenge with your own metrics
+                    Create a custom challenge with your own tasks
                   </p>
                 </div>
               </div>
@@ -118,7 +118,7 @@ export function TemplateSelectionScreen({ onSelectTemplate }: TemplateSelectionS
           {previewTemplate && (
             <div className="space-y-6 mt-4">
               <div>
-                <h3 className="font-semibold mb-3">Metrics to Track</h3>
+                <h3 className="font-semibold mb-3">Tasks to Track</h3>
                 <div className="space-y-3">
                   {previewTemplate.metrics.map((metric, idx) => (
                     <Card key={idx}>

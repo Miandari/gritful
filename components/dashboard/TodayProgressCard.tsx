@@ -94,7 +94,7 @@ export function TodayProgressCard({ activeChallenges, todayEntries }: TodayProgr
                 <div className="flex-1">
                   <div className="font-medium">{challenge.challenge.name}</div>
                   <div className="text-xs text-muted-foreground mt-1">
-                    {(challenge.challenge.metrics as any[])?.length || 0} metrics to track
+                    {(challenge.challenge.metrics as any[])?.length || 0} tasks to track
                   </div>
                 </div>
                 <Button asChild size="sm">

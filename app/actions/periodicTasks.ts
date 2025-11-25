@@ -3,18 +3,20 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { calculateMetricPoints } from '@/lib/utils/scoring';
-import type { OnetimeTaskCompletion } from '@/lib/validations/challenge';
+import { getPeriodForDate, formatPeriodKey, formatPeriodEnd } from '@/lib/utils/periods';
+import type { PeriodicTaskCompletion } from '@/lib/validations/challenge';
 
-interface SaveOnetimeTaskData {
+interface SavePeriodicTaskData {
   participantId: string;
   taskId: string;
+  frequency: 'weekly' | 'monthly';
   value: any;
 }
 
 /**
- * Save a one-time task completion
+ * Save a periodic (weekly/monthly) task completion
  */
-export async function saveOnetimeTaskCompletion(data: SaveOnetimeTaskData) {
+export async function savePeriodicTaskCompletion(data: SavePeriodicTaskData) {
   const supabase = await createClient();
 
   const {
@@ -64,20 +66,26 @@ export async function saveOnetimeTaskCompletion(data: SaveOnetimeTaskData) {
       return { success: false, error: 'Task not found in challenge' };
     }
 
-    if (task.frequency !== 'onetime') {
-      return { success: false, error: 'Task is not a one-time task' };
+    if (task.frequency !== data.frequency) {
+      return { success: false, error: `Task is not a ${data.frequency} task` };
     }
 
-    // Check if already completed
+    // Get current period
+    const currentPeriod = getPeriodForDate(data.frequency);
+    const periodStart = formatPeriodKey(currentPeriod);
+    const periodEnd = formatPeriodEnd(currentPeriod);
+
+    // Check if already completed for this period
     const { data: existingCompletion } = await supabase
-      .from('onetime_task_completions')
+      .from('periodic_task_completions')
       .select('id')
       .eq('participant_id', data.participantId)
       .eq('task_id', data.taskId)
+      .eq('period_start', periodStart)
       .single();
 
     if (existingCompletion) {
-      return { success: false, error: 'Task already completed' };
+      return { success: false, error: `Task already completed for this ${data.frequency === 'weekly' ? 'week' : 'month'}` };
     }
 
     // Calculate points for this task
@@ -85,10 +93,13 @@ export async function saveOnetimeTaskCompletion(data: SaveOnetimeTaskData) {
 
     // Insert the completion
     const { error: insertError } = await supabase
-      .from('onetime_task_completions')
+      .from('periodic_task_completions')
       .insert({
         participant_id: data.participantId,
         task_id: data.taskId,
+        frequency: data.frequency,
+        period_start: periodStart,
+        period_end: periodEnd,
         value: data.value,
         points_earned: pointsEarned,
         completed_at: new Date().toISOString(),
@@ -100,7 +111,7 @@ export async function saveOnetimeTaskCompletion(data: SaveOnetimeTaskData) {
     }
 
     // Update participant's total points
-    await updateTotalPointsWithOnetime(participation.id);
+    await updateTotalPointsWithPeriodic(participation.id);
 
     // Revalidate paths
     revalidatePath('/dashboard/today');
@@ -111,7 +122,7 @@ export async function saveOnetimeTaskCompletion(data: SaveOnetimeTaskData) {
 
     return { success: true, points: pointsEarned };
   } catch (error) {
-    console.error('Error saving one-time task completion:', error);
+    console.error('Error saving periodic task completion:', error);
     if (error instanceof Error) {
       return { success: false, error: error.message };
     }
@@ -120,11 +131,11 @@ export async function saveOnetimeTaskCompletion(data: SaveOnetimeTaskData) {
 }
 
 /**
- * Get all one-time task completions for a participant
+ * Get all periodic task completions for a participant
  */
-export async function getOnetimeCompletions(
+export async function getPeriodicCompletions(
   participantId: string
-): Promise<{ success: boolean; data?: OnetimeTaskCompletion[]; error?: string }> {
+): Promise<{ success: boolean; data?: PeriodicTaskCompletion[]; error?: string }> {
   const supabase = await createClient();
 
   const {
@@ -137,7 +148,7 @@ export async function getOnetimeCompletions(
 
   try {
     const { data: completions, error } = await supabase
-      .from('onetime_task_completions')
+      .from('periodic_task_completions')
       .select('*')
       .eq('participant_id', participantId)
       .order('completed_at', { ascending: false });
@@ -146,9 +157,9 @@ export async function getOnetimeCompletions(
       throw error;
     }
 
-    return { success: true, data: completions as OnetimeTaskCompletion[] };
+    return { success: true, data: completions as PeriodicTaskCompletion[] };
   } catch (error) {
-    console.error('Error fetching one-time completions:', error);
+    console.error('Error fetching periodic completions:', error);
     if (error instanceof Error) {
       return { success: false, error: error.message };
     }
@@ -157,11 +168,12 @@ export async function getOnetimeCompletions(
 }
 
 /**
- * Delete a one-time task completion (allow undo)
+ * Delete a periodic task completion (allow undo)
  */
-export async function deleteOnetimeTaskCompletion(
+export async function deletePeriodicTaskCompletion(
   participantId: string,
-  taskId: string
+  taskId: string,
+  periodStart: string
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient();
 
@@ -188,17 +200,18 @@ export async function deleteOnetimeTaskCompletion(
 
     // Delete the completion
     const { error: deleteError } = await supabase
-      .from('onetime_task_completions')
+      .from('periodic_task_completions')
       .delete()
       .eq('participant_id', participantId)
-      .eq('task_id', taskId);
+      .eq('task_id', taskId)
+      .eq('period_start', periodStart);
 
     if (deleteError) {
       throw deleteError;
     }
 
     // Update participant's total points
-    await updateTotalPointsWithOnetime(participantId);
+    await updateTotalPointsWithPeriodic(participantId);
 
     // Revalidate paths
     revalidatePath('/dashboard/today');
@@ -209,7 +222,7 @@ export async function deleteOnetimeTaskCompletion(
 
     return { success: true };
   } catch (error) {
-    console.error('Error deleting one-time task completion:', error);
+    console.error('Error deleting periodic task completion:', error);
     if (error instanceof Error) {
       return { success: false, error: error.message };
     }
@@ -218,9 +231,9 @@ export async function deleteOnetimeTaskCompletion(
 }
 
 /**
- * Update total points including one-time and periodic task completions
+ * Update total points including periodic task completions
  */
-async function updateTotalPointsWithOnetime(participantId: string) {
+async function updateTotalPointsWithPeriodic(participantId: string) {
   const supabase = await createClient();
 
   try {
@@ -236,7 +249,7 @@ async function updateTotalPointsWithOnetime(participantId: string) {
       .select('points_earned')
       .eq('participant_id', participantId);
 
-    // Sum all points from periodic completions (weekly/monthly)
+    // Sum all points from periodic completions
     const { data: periodicCompletions } = await supabase
       .from('periodic_task_completions')
       .select('points_earned')
@@ -264,132 +277,4 @@ async function updateTotalPointsWithOnetime(participantId: string) {
   } catch (error) {
     console.error('Error updating total points:', error);
   }
-}
-
-/**
- * Add a task to an existing challenge (creator only)
- * Supports all task types: daily, one-time, weekly, monthly
- */
-export async function addTaskToChallenge(
-  challengeId: string,
-  task: {
-    name: string;
-    type: string;
-    required: boolean;
-    config: any;
-    points: number;
-    frequency: string;
-    scoring_mode?: string;
-    threshold?: number;
-    threshold_type?: string;
-    deadline?: string;
-    starts_at?: string;
-    ends_at?: string;
-  }
-) {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { success: false, error: 'Not authenticated' };
-  }
-
-  try {
-    // Verify user is the challenge creator
-    const { data: challenge, error: challengeError } = await supabase
-      .from('challenges')
-      .select('id, creator_id, metrics, ends_at')
-      .eq('id', challengeId)
-      .single();
-
-    if (challengeError || !challenge) {
-      return { success: false, error: 'Challenge not found' };
-    }
-
-    if (challenge.creator_id !== user.id) {
-      return { success: false, error: 'Only the challenge creator can add tasks' };
-    }
-
-    // Validate that task ends_at doesn't exceed challenge ends_at
-    const challengeEndDate = new Date(challenge.ends_at);
-    let taskEndsAt = task.ends_at ? new Date(task.ends_at) : challengeEndDate;
-
-    if (taskEndsAt > challengeEndDate) {
-      taskEndsAt = challengeEndDate;
-    }
-
-    // Create the new task with a unique ID
-    const taskId = `metric_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const metrics = (challenge.metrics as any[]) || [];
-    const newTask = {
-      id: taskId,
-      name: task.name,
-      type: task.type,
-      required: task.required,
-      config: task.config,
-      order: metrics.length,
-      points: task.points,
-      scoring_mode: task.scoring_mode,
-      threshold: task.threshold,
-      threshold_type: task.threshold_type,
-      frequency: task.frequency,
-      deadline: task.deadline,
-      starts_at: task.starts_at || new Date().toISOString(),
-      ends_at: taskEndsAt.toISOString(),
-      created_at: new Date().toISOString(),
-    };
-
-    // Add to metrics array
-    const updatedMetrics = [...metrics, newTask];
-
-    // Update the challenge
-    const { error: updateError } = await supabase
-      .from('challenges')
-      .update({ metrics: updatedMetrics })
-      .eq('id', challengeId);
-
-    if (updateError) {
-      throw updateError;
-    }
-
-    // Revalidate paths
-    revalidatePath(`/challenges/${challengeId}`);
-    revalidatePath(`/challenges/${challengeId}/entries`);
-    revalidatePath('/dashboard/today');
-
-    return { success: true, taskId };
-  } catch (error) {
-    console.error('Error adding task:', error);
-    if (error instanceof Error) {
-      return { success: false, error: error.message };
-    }
-    return { success: false, error: 'Failed to add task' };
-  }
-}
-
-/**
- * Add a one-time task to an existing challenge (creator only)
- * @deprecated Use addTaskToChallenge instead
- */
-export async function addOnetimeTaskToChallenge(
-  challengeId: string,
-  task: {
-    name: string;
-    type: string;
-    required: boolean;
-    config: any;
-    points: number;
-    scoring_mode?: string;
-    threshold?: number;
-    threshold_type?: string;
-    deadline?: string;
-  }
-) {
-  return addTaskToChallenge(challengeId, {
-    ...task,
-    frequency: 'onetime',
-  });
 }

@@ -10,7 +10,7 @@ interface Step {
 
 const steps: Step[] = [
   { id: 1, name: 'Basic Info', description: 'Name and duration' },
-  { id: 2, name: 'Metrics', description: 'What to track' },
+  { id: 2, name: 'Tasks', description: 'What to track' },
   { id: 3, name: 'Settings', description: 'Privacy and rules' },
   { id: 4, name: 'Review', description: 'Create challenge' },
 ];

@@ -64,7 +64,7 @@ export function TemplateCard({ template, onSelect, onPreview }: TemplateCardProp
       <CardContent>
         <div className="space-y-3">
           <div className="text-sm text-muted-foreground">
-            <span className="font-medium">{template.metrics.length}</span> metrics to track
+            <span className="font-medium">{template.metrics.length}</span> tasks to track
           </div>
           <div className="flex gap-2">
             <Button

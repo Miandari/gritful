@@ -120,8 +120,8 @@ export function Step4Review({ onPrev }: Step4ReviewProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Metrics ({metrics.length})</CardTitle>
-          <CardDescription>Daily items to track</CardDescription>
+          <CardTitle>Tasks ({metrics.length})</CardTitle>
+          <CardDescription>Items to track</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">

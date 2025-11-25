@@ -204,7 +204,7 @@ export function Step3Settings({ onNext, onPrev }: Step3SettingsProps) {
                 Show participant details to other members
               </Label>
               <p className="text-sm text-gray-600">
-                Allow participants to see each other's full progress including metric data and notes
+                Allow participants to see each other's full progress including task data and notes
               </p>
             </div>
           </div>
@@ -264,7 +264,7 @@ export function Step3Settings({ onNext, onPrev }: Step3SettingsProps) {
                   Enable perfect day bonus
                 </Label>
                 <p className="text-sm text-gray-600">
-                  Award bonus points for completing all required metrics
+                  Award bonus points for completing all required tasks
                 </p>
                 {watchEnablePerfectDayBonus && (
                   <div className="mt-2">

@@ -144,12 +144,12 @@ export function DayDetailModal({
             </div>
           )}
 
-          {/* Metrics Data */}
+          {/* Task Data */}
           {entry?.metric_data && Object.keys(entry.metric_data).length > 0 && (
             <div className="bg-card rounded-lg border p-4">
               <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
                 <FileText className="h-5 w-5" />
-                Metrics
+                Tasks
               </h3>
               <div className="space-y-3">
                 {Object.entries(entry.metric_data).map(([metricId, value]: [string, any]) => {

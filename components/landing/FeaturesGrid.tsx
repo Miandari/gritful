@@ -20,10 +20,10 @@ export function FeaturesGrid() {
     },
     {
       icon: BarChart3,
-      title: 'Custom Metrics',
+      title: 'Custom Tasks',
       description: 'Track anything that matters to you. From workout minutes to books read, you define what success looks like.',
       color: 'blue',
-      stats: '50+ metric types',
+      stats: '50+ task types',
     },
     {
       icon: Calendar,

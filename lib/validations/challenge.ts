@@ -14,7 +14,7 @@ export const metricConfigSchema = z.object({
 });
 
 // Task frequency types
-export const taskFrequencySchema = z.enum(['daily', 'onetime']);
+export const taskFrequencySchema = z.enum(['daily', 'weekly', 'monthly', 'onetime']);
 export type TaskFrequency = z.infer<typeof taskFrequencySchema>;
 
 export const metricSchema = z.object({
@@ -33,7 +33,7 @@ export const metricSchema = z.object({
     threshold: z.number(),
     points: z.number(),
   })).optional(),
-  // Frequency configuration (Phase 1: daily, onetime; Phase 2 will add: weekly, monthly)
+  // Frequency configuration: daily, weekly, monthly, onetime
   frequency: taskFrequencySchema.default('daily'),
   // For one-time tasks: optional deadline and creation timestamp
   deadline: z.string().optional(), // ISO date string
@@ -90,6 +90,23 @@ export const onetimeTaskCompletionSchema = z.object({
 });
 
 export type OnetimeTaskCompletion = z.infer<typeof onetimeTaskCompletionSchema>;
+
+// Periodic (weekly/monthly) task completion schema
+export const periodicTaskCompletionSchema = z.object({
+  id: z.string(),
+  participant_id: z.string(),
+  task_id: z.string(),
+  frequency: z.enum(['weekly', 'monthly']),
+  period_start: z.string(), // YYYY-MM-DD
+  period_end: z.string(),   // YYYY-MM-DD
+  value: z.any(), // Flexible - depends on task type
+  points_earned: z.number().default(0),
+  completed_at: z.string(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+});
+
+export type PeriodicTaskCompletion = z.infer<typeof periodicTaskCompletionSchema>;
 
 // Default metric templates
 export const defaultMetricTemplates = {

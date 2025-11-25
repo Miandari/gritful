@@ -27,13 +27,13 @@ import {
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-interface SortableMetricCardProps {
+interface SortableTaskCardProps {
   metric: MetricFormData;
   onEdit: () => void;
   onDelete: () => void;
 }
 
-function SortableMetricCard({ metric, onEdit, onDelete }: SortableMetricCardProps) {
+function SortableTaskCard({ metric, onEdit, onDelete }: SortableTaskCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: metric.id,
   });
@@ -88,12 +88,12 @@ function SortableMetricCard({ metric, onEdit, onDelete }: SortableMetricCardProp
   );
 }
 
-interface Step2MetricsProps {
+interface Step2TasksProps {
   onNext: () => void;
   onPrev: () => void;
 }
 
-export function Step2Metrics({ onNext, onPrev }: Step2MetricsProps) {
+export function Step2Tasks({ onNext, onPrev }: Step2TasksProps) {
   const { metrics, addMetric, updateMetric, removeMetric, reorderMetrics } =
     useChallengeWizardStore();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -144,7 +144,7 @@ export function Step2Metrics({ onNext, onPrev }: Step2MetricsProps) {
 
   const handleNext = () => {
     if (metrics.length === 0) {
-      alert('Please add at least one metric');
+      alert('Please add at least one task');
       return;
     }
     onNext();
@@ -153,19 +153,19 @@ export function Step2Metrics({ onNext, onPrev }: Step2MetricsProps) {
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-lg font-semibold">Define Your Metrics</h2>
+        <h2 className="text-lg font-semibold">Define Your Tasks</h2>
         <p className="mt-1 text-sm text-gray-600">
-          Add the things you want to track daily in this challenge
+          Add the things you want to track in this challenge
         </p>
       </div>
 
       {metrics.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="mb-4 text-gray-600">No metrics added yet</p>
+            <p className="mb-4 text-gray-600">No tasks added yet</p>
             <Button onClick={handleAddMetric}>
               <Plus className="mr-2 h-4 w-4" />
-              Add Your First Metric
+              Add Your First Task
             </Button>
           </CardContent>
         </Card>
@@ -178,7 +178,7 @@ export function Step2Metrics({ onNext, onPrev }: Step2MetricsProps) {
           >
             <SortableContext items={metrics} strategy={verticalListSortingStrategy}>
               {metrics.map((metric) => (
-                <SortableMetricCard
+                <SortableTaskCard
                   key={metric.id}
                   metric={metric}
                   onEdit={() => handleEditMetric(metric)}
@@ -190,7 +190,7 @@ export function Step2Metrics({ onNext, onPrev }: Step2MetricsProps) {
 
           <Button onClick={handleAddMetric} variant="outline" className="mt-4 w-full">
             <Plus className="mr-2 h-4 w-4" />
-            Add Another Metric
+            Add Another Task
           </Button>
         </>
       )}
@@ -198,7 +198,7 @@ export function Step2Metrics({ onNext, onPrev }: Step2MetricsProps) {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{editingMetric ? 'Edit Metric' : 'Add New Metric'}</DialogTitle>
+            <DialogTitle>{editingMetric ? 'Edit Task' : 'Add New Task'}</DialogTitle>
           </DialogHeader>
           <MetricBuilder
             metric={editingMetric || {}}

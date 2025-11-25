@@ -19,7 +19,7 @@ export function SocialProof() {
       role: 'Software Developer',
       avatar: 'MC',
       rating: 5,
-      text: 'Finally, a habit tracker that actually works! Custom metrics let me track everything from coding hours to meditation. Love the dark theme too.',
+      text: 'Finally, a habit tracker that actually works! Custom tasks let me track everything from coding hours to meditation. Love the dark theme too.',
     },
     {
       name: 'Emma Williams',

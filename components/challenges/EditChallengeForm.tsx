@@ -104,12 +104,12 @@ export default function EditChallengeForm({ challenge }: EditChallengeFormProps)
 
   return (
     <div className="space-y-6">
-      {/* Metrics Configuration */}
+      {/* Tasks Configuration */}
       <Card>
         <CardHeader>
-          <CardTitle>Metrics & Points</CardTitle>
+          <CardTitle>Tasks & Points</CardTitle>
           <CardDescription>
-            Configure points and thresholds for each metric
+            Configure points and thresholds for each task
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -241,7 +241,7 @@ export default function EditChallengeForm({ challenge }: EditChallengeFormProps)
                   Enable perfect day bonus
                 </Label>
                 <p className="text-sm text-gray-600">
-                  Award bonus points for completing all required metrics
+                  Award bonus points for completing all required tasks
                 </p>
                 {enablePerfectDayBonus && (
                   <div className="mt-2">

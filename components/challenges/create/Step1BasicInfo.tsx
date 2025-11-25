@@ -147,7 +147,7 @@ export function Step1BasicInfo({ onNext, onBackToTemplates }: Step1BasicInfoProp
           </Button>
         )}
         <Button type="submit" className={!onBackToTemplates ? 'ml-auto' : ''}>
-          Next: Add Metrics
+          Next: Add Tasks
         </Button>
       </div>
     </form>

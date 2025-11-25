@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { StepIndicator } from '@/components/challenges/create/StepIndicator';
 import { Step1BasicInfo } from '@/components/challenges/create/Step1BasicInfo';
-import { Step2Metrics } from '@/components/challenges/create/Step2Metrics';
+import { Step2Tasks } from '@/components/challenges/create/Step2Tasks';
 import { Step3Settings } from '@/components/challenges/create/Step3Settings';
 import { Step4Review } from '@/components/challenges/create/Step4Review';
 import { TemplateSelectionScreen } from '@/components/challenges/create/TemplateSelectionScreen';
@@ -110,7 +110,7 @@ export default function CreateChallengeContent() {
       case 1:
         return <Step1BasicInfo onNext={nextStep} onBackToTemplates={handleBackToTemplates} />;
       case 2:
-        return <Step2Metrics onNext={nextStep} onPrev={prevStep} />;
+        return <Step2Tasks onNext={nextStep} onPrev={prevStep} />;
       case 3:
         return <Step3Settings onNext={nextStep} onPrev={prevStep} />;
       case 4:
@@ -177,7 +177,7 @@ export default function CreateChallengeContent() {
           <div>
             <h1 className="text-3xl font-bold text-foreground">Create New Challenge</h1>
             <p className="mt-2 text-gray-600 dark:text-gray-400">
-              Set up a challenge with custom metrics to track your daily progress
+              Set up a challenge with custom tasks to track your progress
             </p>
           </div>
           <Button variant="outline" onClick={handleCancel}>

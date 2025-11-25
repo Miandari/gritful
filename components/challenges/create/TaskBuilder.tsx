@@ -175,15 +175,16 @@ export function TaskBuilder({ metric, onSave, onCancel, challengeEndDate, lockFr
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="daily">Daily - Track every day</SelectItem>
+            <SelectItem value="weekly">Weekly - Once per week</SelectItem>
+            <SelectItem value="monthly">Monthly - Once per month</SelectItem>
             <SelectItem value="onetime">One-time - Complete once</SelectItem>
-            {/* Phase 2: <SelectItem value="weekly">Weekly - Once per week</SelectItem> */}
-            {/* Phase 2: <SelectItem value="monthly">Monthly - Once per month</SelectItem> */}
           </SelectContent>
         </Select>
         <p className="text-xs text-muted-foreground mt-1">
-          {formData.frequency === 'onetime'
-            ? 'This task will only need to be completed once during the challenge'
-            : 'This task will need to be completed every day'}
+          {formData.frequency === 'onetime' && 'This task will only need to be completed once during the challenge'}
+          {formData.frequency === 'daily' && 'This task will need to be completed every day'}
+          {formData.frequency === 'weekly' && 'This task resets every Monday and is due by Sunday'}
+          {formData.frequency === 'monthly' && 'This task resets on the 1st and is due by end of month'}
         </p>
       </div>
 

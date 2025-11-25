@@ -34,6 +34,7 @@ export default async function TodayPage() {
   const activeChallenges: any[] = [];
   const todayEntries: any = {};
   const onetimeCompletionsMap: Record<string, any[]> = {};
+  const periodicCompletionsMap: Record<string, any[]> = {};
   const todayDate = getTodayDateString();
   const todayFormatted = format(new Date(), 'EEEE, MMMM d, yyyy');
 
@@ -73,6 +74,14 @@ export default async function TodayPage() {
             .eq('participant_id', participation.id);
 
           onetimeCompletionsMap[participation.id] = onetimeCompletions || [];
+
+          // Get periodic task completions (weekly/monthly)
+          const { data: periodicCompletions } = await supabase
+            .from('periodic_task_completions')
+            .select('*')
+            .eq('participant_id', participation.id);
+
+          periodicCompletionsMap[participation.id] = periodicCompletions || [];
         }
       }
     }
@@ -200,6 +209,7 @@ export default async function TodayPage() {
                     existingEntry={entry}
                     isLocked={isLocked}
                     onetimeCompletions={onetimeCompletionsMap[challenge.participation_id] || []}
+                    periodicCompletions={periodicCompletionsMap[challenge.participation_id] || []}
                   />
                 )}
               </CardContent>

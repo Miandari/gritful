@@ -130,7 +130,7 @@ export default async function JoinChallengePage({
             </div>
 
             <div>
-              <h4 className="font-medium mb-2">Daily Metrics ({(challenge.metrics as any[])?.length || 0})</h4>
+              <h4 className="font-medium mb-2">Tasks ({(challenge.metrics as any[])?.length || 0})</h4>
               <div className="space-y-1">
                 {(challenge.metrics as any[])?.map((metric: any, index: number) => (
                   <div key={metric.id} className="flex items-center gap-2">

@@ -117,7 +117,7 @@ export function ProductScreenshots() {
                 <div className="absolute inset-y-0 left-0 w-2/5 bg-gradient-to-r from-green-500 to-blue-500 rounded-full" />
               </div>
 
-              {/* Daily Metrics */}
+              {/* Daily Tasks */}
               <div className="grid grid-cols-3 gap-2 pt-2">
                 {[
                   { label: 'Workout', value: '45m', color: 'green' },

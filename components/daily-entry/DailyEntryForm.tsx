@@ -14,6 +14,7 @@ import { saveDailyEntry, deleteDailyEntry } from '@/app/actions/entries';
 import { useRouter } from 'next/navigation';
 import { FileUpload } from '@/components/ui/file-upload';
 import { OnetimeTasksSection } from './OnetimeTasksSection';
+import { PeriodicTasksSection } from './PeriodicTasksSection';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,9 +33,11 @@ interface Metric {
   name: string;
   type: 'boolean' | 'number' | 'duration' | 'choice' | 'text' | 'file';
   required: boolean;
-  frequency?: 'daily' | 'onetime';
+  frequency?: 'daily' | 'weekly' | 'monthly' | 'onetime';
   deadline?: string;
   points?: number;
+  starts_at?: string; // ISO timestamp - when task becomes active
+  ends_at?: string;   // ISO timestamp - when task ends
   config?: {
     min?: number;
     max?: number;
@@ -51,6 +54,15 @@ interface OnetimeCompletion {
   value: any;
 }
 
+interface PeriodicCompletion {
+  task_id: string;
+  frequency: 'weekly' | 'monthly';
+  period_start: string;
+  period_end: string;
+  completed_at: string;
+  value: any;
+}
+
 interface DailyEntryFormProps {
   challenge: {
     id: string;
@@ -63,6 +75,7 @@ interface DailyEntryFormProps {
   isLocked?: boolean;
   targetDate?: string; // YYYY-MM-DD format, defaults to today
   onetimeCompletions?: OnetimeCompletion[]; // Completions for one-time tasks
+  periodicCompletions?: PeriodicCompletion[]; // Completions for weekly/monthly tasks
 }
 
 export default function DailyEntryForm({
@@ -72,6 +85,7 @@ export default function DailyEntryForm({
   isLocked = false,
   targetDate,
   onetimeCompletions = [],
+  periodicCompletions = [],
 }: DailyEntryFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -81,22 +95,77 @@ export default function DailyEntryForm({
     existingEntry?.metric_data || {}
   );
 
-  // Filter metrics into daily and one-time tasks
-  const { dailyTasks, onetimeTasks } = useMemo(() => {
+  // Filter metrics into daily, weekly, monthly, and one-time tasks, respecting date ranges
+  const { dailyTasks, weeklyTasks, monthlyTasks, onetimeTasks } = useMemo(() => {
     const daily: Metric[] = [];
+    const weekly: Metric[] = [];
+    const monthly: Metric[] = [];
     const onetime: Metric[] = [];
 
+    // Parse the target date for comparison (use start of day in local timezone)
+    const entryDate = targetDate
+      ? new Date(targetDate + 'T00:00:00')
+      : new Date();
+    entryDate.setHours(0, 0, 0, 0);
+
+    // Helper to check if a task is active on the entry date
+    const isTaskActiveOnDate = (metric: Metric): boolean => {
+      // If no date constraints, task is always active (backward compatibility)
+      if (!metric.starts_at && !metric.ends_at) {
+        return true;
+      }
+
+      // Check starts_at - task must have started by entry date
+      if (metric.starts_at) {
+        const startDate = new Date(metric.starts_at);
+        startDate.setHours(0, 0, 0, 0);
+        if (entryDate < startDate) {
+          return false;
+        }
+      }
+
+      // Check ends_at - task must not have ended before entry date
+      if (metric.ends_at) {
+        const endDate = new Date(metric.ends_at);
+        endDate.setHours(23, 59, 59, 999);
+        if (entryDate > endDate) {
+          return false;
+        }
+      }
+
+      return true;
+    };
+
     challenge.metrics.forEach((metric) => {
-      // Default to 'daily' for backward compatibility
-      if (metric.frequency === 'onetime') {
-        onetime.push(metric);
-      } else {
-        daily.push(metric);
+      // Filter by frequency and date range
+      switch (metric.frequency) {
+        case 'onetime':
+          // One-time tasks are always shown (they handle their own completion state)
+          onetime.push(metric);
+          break;
+        case 'weekly':
+          // Weekly tasks are shown if active
+          if (isTaskActiveOnDate(metric)) {
+            weekly.push(metric);
+          }
+          break;
+        case 'monthly':
+          // Monthly tasks are shown if active
+          if (isTaskActiveOnDate(metric)) {
+            monthly.push(metric);
+          }
+          break;
+        default:
+          // Default to 'daily' for backward compatibility
+          if (isTaskActiveOnDate(metric)) {
+            daily.push(metric);
+          }
+          break;
       }
     });
 
-    return { dailyTasks: daily, onetimeTasks: onetime };
-  }, [challenge.metrics]);
+    return { dailyTasks: daily, weeklyTasks: weekly, monthlyTasks: monthly, onetimeTasks: onetime };
+  }, [challenge.metrics, targetDate]);
 
   // Update form data when existingEntry changes (when user selects different date)
   useEffect(() => {
@@ -469,8 +538,35 @@ export default function DailyEntryForm({
         </form>
       )}
 
-      {/* Divider between sections */}
-      {dailyTasks.length > 0 && onetimeTasks.length > 0 && (
+      {/* Divider between daily and periodic sections */}
+      {dailyTasks.length > 0 && (weeklyTasks.length > 0 || monthlyTasks.length > 0) && (
+        <hr className="border-border" />
+      )}
+
+      {/* Weekly Tasks Section */}
+      {weeklyTasks.length > 0 && (
+        <PeriodicTasksSection
+          tasks={weeklyTasks}
+          frequency="weekly"
+          participantId={participationId}
+          challengeId={challenge.id}
+          completions={periodicCompletions as any}
+        />
+      )}
+
+      {/* Monthly Tasks Section */}
+      {monthlyTasks.length > 0 && (
+        <PeriodicTasksSection
+          tasks={monthlyTasks}
+          frequency="monthly"
+          participantId={participationId}
+          challengeId={challenge.id}
+          completions={periodicCompletions as any}
+        />
+      )}
+
+      {/* Divider before one-time section */}
+      {(dailyTasks.length > 0 || weeklyTasks.length > 0 || monthlyTasks.length > 0) && onetimeTasks.length > 0 && (
         <hr className="border-border" />
       )}
 

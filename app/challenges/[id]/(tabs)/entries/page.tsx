@@ -59,6 +59,12 @@ export default async function AllEntriesPage({
     .select('*')
     .eq('participant_id', myParticipation.id);
 
+  // Fetch periodic task completions (weekly/monthly)
+  const { data: periodicCompletions } = await supabase
+    .from('periodic_task_completions')
+    .select('*')
+    .eq('participant_id', myParticipation.id);
+
   // Serialize the challenge data for client component
   const serializedChallenge = {
     id: challenge.id,
@@ -131,6 +137,7 @@ export default async function AllEntriesPage({
           participantId={myParticipation.id}
           entries={entries || []}
           onetimeCompletions={onetimeCompletions || []}
+          periodicCompletions={periodicCompletions || []}
           challengeStartDate={new Date(challenge.starts_at)}
           challengeEndDate={new Date(challenge.ends_at)}
         />
