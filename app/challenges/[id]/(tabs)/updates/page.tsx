@@ -62,14 +62,16 @@ export default async function ChallengeUpdatesPage({
     <div className="space-y-6">
       {/* Post Update Button - Only visible to creators */}
       {isCreator && (
-        <div className="flex justify-between items-center">
-          <div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
+          <div className="flex-1 min-w-0">
             <h2 className="text-lg font-semibold">Challenge Updates</h2>
             <p className="text-sm text-muted-foreground">
               Share updates and announcements with all participants
             </p>
           </div>
-          <PostUpdateButton challengeId={id} participantCount={participantCount} />
+          <div className="flex-shrink-0">
+            <PostUpdateButton challengeId={id} participantCount={participantCount} />
+          </div>
         </div>
       )}
 

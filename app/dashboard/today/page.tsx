@@ -33,6 +33,7 @@ export default async function TodayPage() {
 
   const activeChallenges: any[] = [];
   const todayEntries: any = {};
+  const onetimeCompletionsMap: Record<string, any[]> = {};
   const todayDate = getTodayDateString();
   const todayFormatted = format(new Date(), 'EEEE, MMMM d, yyyy');
 
@@ -64,6 +65,14 @@ export default async function TodayPage() {
           if (entry) {
             todayEntries[participation.id] = entry;
           }
+
+          // Get one-time task completions
+          const { data: onetimeCompletions } = await supabase
+            .from('onetime_task_completions')
+            .select('*')
+            .eq('participant_id', participation.id);
+
+          onetimeCompletionsMap[participation.id] = onetimeCompletions || [];
         }
       }
     }
@@ -190,6 +199,7 @@ export default async function TodayPage() {
                     participationId={challenge.participation_id}
                     existingEntry={entry}
                     isLocked={isLocked}
+                    onetimeCompletions={onetimeCompletionsMap[challenge.participation_id] || []}
                   />
                 )}
               </CardContent>

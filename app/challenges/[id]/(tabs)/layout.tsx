@@ -13,6 +13,7 @@ import { Settings, MoreVertical, Users } from 'lucide-react';
 import Link from 'next/link';
 import DeleteChallengeButton from '@/components/challenges/DeleteChallengeButton';
 import LeaveChallengeButton from '@/components/challenges/LeaveChallengeButton';
+import { AddOnetimeTaskMenuItem } from '@/components/challenges/AddOnetimeTaskMenuItem';
 import JoinChallengeButton from '@/components/challenges/JoinChallengeButton';
 import { ChallengeTabs } from '@/components/challenges/ChallengeTabs';
 
@@ -177,6 +178,11 @@ export default async function ChallengeLayout({
                     <DropdownMenuContent align="end" className="w-48">
                       {isCreator && (
                         <>
+                          <AddOnetimeTaskMenuItem
+                            challengeId={challenge.id}
+                            challengeEndDate={challenge.ends_at}
+                          />
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem asChild>
                             <Link href={`/challenges/${id}/participants`} className="cursor-pointer">
                               <Users className="mr-2 h-4 w-4" />
@@ -226,6 +232,11 @@ export default async function ChallengeLayout({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">
+                    <AddOnetimeTaskMenuItem
+                      challengeId={challenge.id}
+                      challengeEndDate={challenge.ends_at}
+                    />
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
                       <Link href={`/challenges/${id}/participants`} className="cursor-pointer">
                         <Users className="mr-2 h-4 w-4" />

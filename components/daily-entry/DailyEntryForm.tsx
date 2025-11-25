@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,7 @@ import { Clock, CheckCircle, AlertCircle, Trash2 } from 'lucide-react';
 import { saveDailyEntry, deleteDailyEntry } from '@/app/actions/entries';
 import { useRouter } from 'next/navigation';
 import { FileUpload } from '@/components/ui/file-upload';
+import { OnetimeTasksSection } from './OnetimeTasksSection';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +32,9 @@ interface Metric {
   name: string;
   type: 'boolean' | 'number' | 'duration' | 'choice' | 'text' | 'file';
   required: boolean;
+  frequency?: 'daily' | 'onetime';
+  deadline?: string;
+  points?: number;
   config?: {
     min?: number;
     max?: number;
@@ -39,6 +43,12 @@ interface Metric {
     maxLength?: number;
     placeholder?: string;
   };
+}
+
+interface OnetimeCompletion {
+  task_id: string;
+  completed_at: string;
+  value: any;
 }
 
 interface DailyEntryFormProps {
@@ -52,6 +62,7 @@ interface DailyEntryFormProps {
   existingEntry?: any;
   isLocked?: boolean;
   targetDate?: string; // YYYY-MM-DD format, defaults to today
+  onetimeCompletions?: OnetimeCompletion[]; // Completions for one-time tasks
 }
 
 export default function DailyEntryForm({
@@ -60,6 +71,7 @@ export default function DailyEntryForm({
   existingEntry,
   isLocked = false,
   targetDate,
+  onetimeCompletions = [],
 }: DailyEntryFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -68,6 +80,23 @@ export default function DailyEntryForm({
   const [formData, setFormData] = useState<Record<string, any>>(
     existingEntry?.metric_data || {}
   );
+
+  // Filter metrics into daily and one-time tasks
+  const { dailyTasks, onetimeTasks } = useMemo(() => {
+    const daily: Metric[] = [];
+    const onetime: Metric[] = [];
+
+    challenge.metrics.forEach((metric) => {
+      // Default to 'daily' for backward compatibility
+      if (metric.frequency === 'onetime') {
+        onetime.push(metric);
+      } else {
+        daily.push(metric);
+      }
+    });
+
+    return { dailyTasks: daily, onetimeTasks: onetime };
+  }, [challenge.metrics]);
 
   // Update form data when existingEntry changes (when user selects different date)
   useEffect(() => {
@@ -80,8 +109,8 @@ export default function DailyEntryForm({
     setIsSubmitting(true);
 
     try {
-      // Validate required fields
-      for (const metric of challenge.metrics) {
+      // Validate required fields (only for daily tasks)
+      for (const metric of dailyTasks) {
         if (metric.required && (formData[metric.id] === undefined || formData[metric.id] === null || formData[metric.id] === '')) {
           setError(`Please complete the required field: ${metric.name}`);
           setIsSubmitting(false);
@@ -340,98 +369,120 @@ export default function DailyEntryForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Metrics */}
-      <div className="space-y-4">
-        {challenge.metrics.map((metric) => (
-          <Card key={metric.id} className="p-4">
-            {renderMetricInput(metric)}
-          </Card>
-        ))}
-      </div>
+    <div className="space-y-8">
+      {/* Daily Tasks Section */}
+      {dailyTasks.length > 0 && (
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Daily Tasks</h3>
+            <div className="space-y-4">
+              {dailyTasks.map((metric) => (
+                <Card key={metric.id} className="p-4">
+                  {renderMetricInput(metric)}
+                </Card>
+              ))}
+            </div>
+          </div>
 
-      {/* Notes */}
-      <div className="space-y-2">
-        <Label htmlFor="notes">Additional Notes (Optional)</Label>
-        <Textarea
-          id="notes"
-          value={formData.notes || ''}
-          onChange={(e) => updateMetricValue('notes', e.target.value)}
-          placeholder="Any additional thoughts or reflections..."
-          disabled={isLocked}
-          rows={3}
-        />
-      </div>
+          {/* Notes */}
+          <div className="space-y-2">
+            <Label htmlFor="notes">Additional Notes (Optional)</Label>
+            <Textarea
+              id="notes"
+              value={formData.notes || ''}
+              onChange={(e) => updateMetricValue('notes', e.target.value)}
+              placeholder="Any additional thoughts or reflections..."
+              disabled={isLocked}
+              rows={3}
+            />
+          </div>
 
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
-      {/* Actions */}
-      <div className="flex gap-2">
-        <Button
-          type="submit"
-          disabled={isSubmitting || isLocked}
-          className="flex-1"
-        >
-          {isSubmitting ? 'Saving...' : existingEntry ? 'Update Entry' : 'Save Entry'}
-        </Button>
-        {challenge.lock_entries_after_day && !isLocked && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={async () => {
-              // Save and lock
-              await handleSubmit(new Event('submit') as any);
-              // The lock will be handled by the server action
-            }}
-            disabled={isSubmitting}
-          >
-            <CheckCircle className="mr-2 h-4 w-4" />
-            Save & Lock
-          </Button>
-        )}
-        {existingEntry && !isLocked && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
+          {/* Actions */}
+          <div className="flex gap-2">
+            <Button
+              type="submit"
+              disabled={isSubmitting || isLocked}
+              className="flex-1"
+            >
+              {isSubmitting ? 'Saving...' : existingEntry ? 'Update Entry' : 'Save Entry'}
+            </Button>
+            {challenge.lock_entries_after_day && !isLocked && (
               <Button
                 type="button"
                 variant="outline"
-                disabled={isDeleting || isSubmitting}
-                className="border-red-500/30 text-red-600 dark:text-red-400 hover:bg-red-500/10 dark:hover:bg-red-500/20"
+                onClick={async () => {
+                  // Save and lock
+                  await handleSubmit(new Event('submit') as any);
+                  // The lock will be handled by the server action
+                }}
+                disabled={isSubmitting}
               >
-                <Trash2 className="h-4 w-4" />
+                <CheckCircle className="mr-2 h-4 w-4" />
+                Save & Lock
               </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete Entry</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Are you sure you want to delete this entry? This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleDelete}
-                  className="bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
-                >
-                  {isDeleting ? 'Deleting...' : 'Delete'}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
-      </div>
+            )}
+            {existingEntry && !isLocked && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isDeleting || isSubmitting}
+                    className="border-red-500/30 text-red-600 dark:text-red-400 hover:bg-red-500/10 dark:hover:bg-red-500/20"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Entry</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to delete this entry? This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDelete}
+                      className="bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
+                    >
+                      {isDeleting ? 'Deleting...' : 'Delete'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
 
-      {challenge.lock_entries_after_day && (
-        <p className="text-xs text-muted-foreground text-center">
-          Note: Entries will be automatically locked after submission if configured
-        </p>
+          {challenge.lock_entries_after_day && (
+            <p className="text-xs text-muted-foreground text-center">
+              Note: Entries will be automatically locked after submission if configured
+            </p>
+          )}
+        </form>
       )}
-    </form>
+
+      {/* Divider between sections */}
+      {dailyTasks.length > 0 && onetimeTasks.length > 0 && (
+        <hr className="border-border" />
+      )}
+
+      {/* One-time Tasks Section */}
+      {onetimeTasks.length > 0 && (
+        <OnetimeTasksSection
+          tasks={onetimeTasks}
+          participantId={participationId}
+          challengeId={challenge.id}
+          completions={onetimeCompletions}
+        />
+      )}
+    </div>
   );
 }

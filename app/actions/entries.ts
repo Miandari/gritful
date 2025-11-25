@@ -206,18 +206,26 @@ async function updateTotalPoints(participantId: string) {
 
   try {
     // Sum all points from daily entries for this participant
-    const { data: entries } = await supabase
+    const { data: dailyEntries } = await supabase
       .from('daily_entries')
       .select('points_earned, bonus_points')
       .eq('participant_id', participantId);
 
-    if (!entries) {
-      return;
-    }
+    // Sum all points from one-time task completions
+    const { data: onetimeCompletions } = await supabase
+      .from('onetime_task_completions')
+      .select('points_earned')
+      .eq('participant_id', participantId);
 
-    const totalPoints = entries.reduce((sum, entry) => {
+    const dailyPoints = (dailyEntries || []).reduce((sum, entry) => {
       return sum + (entry.points_earned || 0) + (entry.bonus_points || 0);
     }, 0);
+
+    const onetimePoints = (onetimeCompletions || []).reduce((sum, completion) => {
+      return sum + (completion.points_earned || 0);
+    }, 0);
+
+    const totalPoints = dailyPoints + onetimePoints;
 
     // Update participant's total points
     await supabase

@@ -33,8 +33,8 @@ CREATE TABLE IF NOT EXISTS challenge_activity_feed (
   comment_count INT DEFAULT 0,
 
   -- Timestamps
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Performance indexes
@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS activity_reactions (
   user_id UUID REFERENCES profiles(id) NOT NULL,
   reaction_type VARCHAR(20) DEFAULT 'cheer',
   -- Types: 'cheer', 'fire', 'muscle', 'heart', 'clap'
-  created_at TIMESTAMP DEFAULT NOW(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
 
   -- One reaction type per user per activity
   UNIQUE(activity_id, user_id, reaction_type)
@@ -81,8 +81,8 @@ CREATE TABLE IF NOT EXISTS activity_comments (
   activity_id UUID REFERENCES challenge_activity_feed(id) ON DELETE CASCADE NOT NULL,
   user_id UUID REFERENCES profiles(id) NOT NULL,
   comment TEXT NOT NULL,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
 
   -- Validation
   CONSTRAINT comment_length CHECK (char_length(comment) >= 1 AND char_length(comment) <= 500)
@@ -100,7 +100,7 @@ CREATE INDEX IF NOT EXISTS idx_activity_comments_user
 
 -- Add feed read tracking to challenge_participants
 ALTER TABLE challenge_participants
-  ADD COLUMN IF NOT EXISTS last_activity_read_at TIMESTAMP DEFAULT NOW();
+  ADD COLUMN IF NOT EXISTS last_activity_read_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
 
 -- =============================================
 -- 5. TRIGGERS FOR AUTO-LOGGING

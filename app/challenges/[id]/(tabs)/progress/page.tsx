@@ -58,6 +58,22 @@ export default async function ProgressPage({
     .eq('participant_id', myParticipation.id)
     .order('entry_date', { ascending: true });
 
+  // Fetch my one-time task completions
+  const { data: myOnetimeCompletions } = await supabase
+    .from('onetime_task_completions')
+    .select('task_id, points_earned, completed_at')
+    .eq('participant_id', myParticipation.id);
+
+  // Calculate one-time task stats
+  const onetimeTasks = (challenge.metrics as any[])?.filter(
+    (m: any) => m.frequency === 'onetime'
+  ) || [];
+  const onetimeTasksCompleted = myOnetimeCompletions?.length || 0;
+  const onetimeTasksTotal = onetimeTasks.length;
+  const onetimePoints = myOnetimeCompletions?.reduce(
+    (sum, c) => sum + (c.points_earned || 0), 0
+  ) || 0;
+
   // Calculate my statistics
   const myCompletedDays = myEntries?.filter(e => e.is_completed).length || 0;
   const totalDays = Math.ceil(
@@ -209,12 +225,52 @@ export default async function ProgressPage({
                 <div className="text-right flex-shrink-0">
                   <div className="text-xs sm:text-sm opacity-90 mb-1">Points breakdown</div>
                   <div className="space-y-1 text-xs sm:text-sm">
-                    <div>Base: {myEntries?.reduce((sum, e) => sum + (e.points_earned || 0), 0) || 0}</div>
+                    <div>Daily: {myEntries?.reduce((sum, e) => sum + (e.points_earned || 0), 0) || 0}</div>
                     <div>Bonus: {myEntries?.reduce((sum, e) => sum + (e.bonus_points || 0), 0) || 0}</div>
+                    {onetimeTasksTotal > 0 && (
+                      <div>One-time: {onetimePoints}</div>
+                    )}
                   </div>
                 </div>
               </div>
             </div>
+
+            {/* One-time Tasks Progress (only show if there are one-time tasks) */}
+            {onetimeTasksTotal > 0 && (
+              <div className="rounded-lg bg-card p-4 sm:p-6 shadow">
+                <h3 className="text-base sm:text-lg font-semibold mb-4">One-time Tasks</h3>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-3xl font-bold">
+                      {onetimeTasksCompleted}/{onetimeTasksTotal}
+                    </div>
+                    <div className="text-sm text-muted-foreground">tasks completed</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-green-600">
+                      +{onetimePoints}
+                    </div>
+                    <div className="text-sm text-muted-foreground">points earned</div>
+                  </div>
+                </div>
+                {/* Progress bar */}
+                <div className="mt-4">
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-green-500 rounded-full transition-all"
+                      style={{
+                        width: `${onetimeTasksTotal > 0 ? (onetimeTasksCompleted / onetimeTasksTotal) * 100 : 0}%`,
+                      }}
+                    />
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1 text-right">
+                    {onetimeTasksTotal > 0
+                      ? Math.round((onetimeTasksCompleted / onetimeTasksTotal) * 100)
+                      : 0}% complete
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Streak Display */}
             <StreakDisplay
@@ -272,6 +328,14 @@ export default async function ProgressPage({
                       {maxDays - myCompletedDays}
                     </span>
                   </div>
+                  {onetimeTasksTotal > 0 && (
+                    <div className="flex justify-between gap-2 text-sm sm:text-base">
+                      <span className="text-muted-foreground shrink-0">One-time Tasks</span>
+                      <span className="font-medium">
+                        {onetimeTasksCompleted}/{onetimeTasksTotal}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between gap-2 text-sm sm:text-base">
                     <span className="text-muted-foreground shrink-0">Status</span>
                     <span className="font-medium capitalize">

@@ -9,10 +9,17 @@ import { CheckCircle, XCircle, Clock } from 'lucide-react';
 import DailyEntryForm from '@/components/daily-entry/DailyEntryForm';
 import { DateSelector } from '@/components/challenges/DateSelector';
 
+interface OnetimeCompletion {
+  task_id: string;
+  completed_at: string;
+  value: any;
+}
+
 interface EntriesClientProps {
   challenge: any;
   participantId: string;
   entries: any[];
+  onetimeCompletions: OnetimeCompletion[];
   challengeStartDate: Date;
   challengeEndDate: Date;
 }
@@ -21,6 +28,7 @@ export default function EntriesClient({
   challenge,
   participantId,
   entries,
+  onetimeCompletions,
   challengeStartDate,
   challengeEndDate,
 }: EntriesClientProps) {
@@ -97,6 +105,7 @@ export default function EntriesClient({
                 participationId={participantId}
                 existingEntry={selectedEntry || null}
                 targetDate={selectedDate}
+                onetimeCompletions={onetimeCompletions}
               />
             </CardContent>
           </Card>

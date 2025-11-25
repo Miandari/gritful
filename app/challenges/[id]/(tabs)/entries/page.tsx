@@ -53,6 +53,12 @@ export default async function AllEntriesPage({
     .eq('participant_id', myParticipation.id)
     .order('entry_date', { ascending: false });
 
+  // Fetch one-time task completions
+  const { data: onetimeCompletions } = await supabase
+    .from('onetime_task_completions')
+    .select('*')
+    .eq('participant_id', myParticipation.id);
+
   // Serialize the challenge data for client component
   const serializedChallenge = {
     id: challenge.id,
@@ -124,6 +130,7 @@ export default async function AllEntriesPage({
           challenge={serializedChallenge}
           participantId={myParticipation.id}
           entries={entries || []}
+          onetimeCompletions={onetimeCompletions || []}
           challengeStartDate={new Date(challenge.starts_at)}
           challengeEndDate={new Date(challenge.ends_at)}
         />

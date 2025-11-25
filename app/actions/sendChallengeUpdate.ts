@@ -167,10 +167,23 @@ export async function sendChallengeUpdate(
 
     // Trigger email processor to send emails immediately
     try {
-      const processorUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/email-processor`
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
       const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-      if (processorUrl && serviceRoleKey) {
+      console.log('[sendChallengeUpdate] Environment check:', {
+        hasSupabaseUrl: !!supabaseUrl,
+        supabaseUrlLength: supabaseUrl?.length || 0,
+        hasServiceRoleKey: !!serviceRoleKey,
+        serviceRoleKeyLength: serviceRoleKey?.length || 0,
+        serviceRoleKeyPrefix: serviceRoleKey?.substring(0, 20) || 'undefined',
+      })
+
+      if (!supabaseUrl || !serviceRoleKey) {
+        console.error('[sendChallengeUpdate] Missing env vars - emails will not be sent immediately')
+      } else {
+        const processorUrl = `${supabaseUrl}/functions/v1/email-processor`
+        console.log('[sendChallengeUpdate] Calling email-processor:', processorUrl)
+
         // Fire and forget - don't wait for response
         fetch(processorUrl, {
           method: 'POST',
@@ -178,14 +191,27 @@ export async function sendChallengeUpdate(
             'Authorization': `Bearer ${serviceRoleKey}`,
             'Content-Type': 'application/json',
           },
-        }).catch((err) => {
-          // Log but don't fail the action - emails are queued and will be retried
-          console.error('Error triggering email processor:', err)
         })
+          .then(async (res) => {
+            if (!res.ok) {
+              const errorText = await res.text()
+              console.error('[sendChallengeUpdate] Email processor error:', {
+                status: res.status,
+                statusText: res.statusText,
+                body: errorText,
+              })
+            } else {
+              console.log('[sendChallengeUpdate] Email processor triggered successfully')
+            }
+          })
+          .catch((err) => {
+            // Log but don't fail the action - emails are queued and will be retried
+            console.error('[sendChallengeUpdate] Error triggering email processor:', err)
+          })
       }
     } catch (err) {
       // Log but don't fail - emails are safely queued
-      console.error('Error calling email processor:', err)
+      console.error('[sendChallengeUpdate] Error calling email processor:', err)
     }
 
     // Revalidate challenge page

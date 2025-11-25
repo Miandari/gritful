@@ -13,9 +13,13 @@ export const metricConfigSchema = z.object({
   showWhenParentValue: z.any().optional(),
 });
 
+// Task frequency types
+export const taskFrequencySchema = z.enum(['daily', 'onetime']);
+export type TaskFrequency = z.infer<typeof taskFrequencySchema>;
+
 export const metricSchema = z.object({
   id: z.string(),
-  name: z.string().min(1, 'Metric name is required').max(100),
+  name: z.string().min(1, 'Task name is required').max(100),
   type: z.enum(['boolean', 'number', 'duration', 'choice', 'file', 'text', 'combined']),
   required: z.boolean().default(true),
   order: z.number(),
@@ -29,6 +33,11 @@ export const metricSchema = z.object({
     threshold: z.number(),
     points: z.number(),
   })).optional(),
+  // Frequency configuration (Phase 1: daily, onetime; Phase 2 will add: weekly, monthly)
+  frequency: taskFrequencySchema.default('daily'),
+  // For one-time tasks: optional deadline and creation timestamp
+  deadline: z.string().optional(), // ISO date string
+  created_at: z.string().optional(), // ISO timestamp for ordering one-time tasks
 });
 
 // Challenge creation schema
@@ -68,6 +77,20 @@ export function generateMetricId() {
   return `metric_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
+// One-time task completion schema
+export const onetimeTaskCompletionSchema = z.object({
+  id: z.string(),
+  participant_id: z.string(),
+  task_id: z.string(),
+  value: z.any(), // Flexible - depends on task type
+  points_earned: z.number().default(0),
+  completed_at: z.string(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+});
+
+export type OnetimeTaskCompletion = z.infer<typeof onetimeTaskCompletionSchema>;
+
 // Default metric templates
 export const defaultMetricTemplates = {
   boolean: {
@@ -76,6 +99,7 @@ export const defaultMetricTemplates = {
     required: true,
     config: {},
     points: 1,
+    frequency: 'daily' as const,
   },
   number: {
     name: '',
@@ -90,6 +114,7 @@ export const defaultMetricTemplates = {
     scoring_mode: 'binary' as const,
     threshold: 0,
     threshold_type: 'min' as const,
+    frequency: 'daily' as const,
   },
   duration: {
     name: '',
@@ -103,6 +128,7 @@ export const defaultMetricTemplates = {
     scoring_mode: 'binary' as const,
     threshold: 0,
     threshold_type: 'min' as const,
+    frequency: 'daily' as const,
   },
   choice: {
     name: '',
@@ -112,6 +138,7 @@ export const defaultMetricTemplates = {
       options: ['Option 1', 'Option 2'],
     },
     points: 1,
+    frequency: 'daily' as const,
   },
   file: {
     name: '',
@@ -122,6 +149,7 @@ export const defaultMetricTemplates = {
       maxSizeMB: 10,
     },
     points: 1,
+    frequency: 'daily' as const,
   },
   text: {
     name: '',
@@ -131,5 +159,6 @@ export const defaultMetricTemplates = {
       maxLength: 500,
     },
     points: 1,
+    frequency: 'daily' as const,
   },
 };

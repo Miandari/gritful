@@ -509,6 +509,16 @@ CREATE TABLE message_read_receipts (
   - Consider modal or inline quick-log functionality
   - Location: `/app/challenges/[id]/page.tsx`
 
+### Task System Enhancements (Future)
+- [ ] **Rename internal variables from "metric" to "task"** - After Phase 1 (one-time tasks), refactor codebase to use "task" terminology internally (not just UI strings). This is a larger refactor affecting types, database queries, and variable names.
+- [ ] **Phase 2: Weekly/Monthly Tasks** - Add `weekly` and `monthly` frequency options with period-based completion tracking
+- [ ] **Change default frequency to weekly** - Once Phase 2 (weekly/monthly) is implemented, change the default frequency from "daily" to "weekly"
+- [ ] **Milestones** - Big checkpoint goals at specific challenge dates (e.g., "Complete 100 pushups by Week 4")
+- [ ] **Subtasks** - Break complex tasks into smaller steps with sub-checkboxes
+- [ ] **Task Categories/Groups** - Organize tasks into sections (Morning, Evening, Fitness, etc.)
+- [ ] **Task Dependencies** - "Task B unlocks after Task A is complete"
+- [ ] **Participant-specific Tasks** - Assign certain tasks to specific people (for team challenges)
+
 ### Challenge Template System
 **Status**: Phase 1 (MVP) Complete
 

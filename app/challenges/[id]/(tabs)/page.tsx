@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import CopyInviteCodeButton from '@/components/challenges/CopyInviteCodeButton';
+import { AddOnetimeTaskButton } from '@/components/challenges/AddOnetimeTaskButton';
+import { DeadlineBadge } from '@/components/daily-entry/DeadlineBadge';
 
 export default async function ChallengeOverviewPage({
   params
@@ -188,26 +190,102 @@ export default async function ChallengeOverviewPage({
 
         <Card>
           <CardHeader>
-            <CardTitle>Daily Metrics ({(challenge.metrics as any[])?.length || 0})</CardTitle>
-            <CardDescription>What you&apos;ll track each day</CardDescription>
+            <CardTitle>Tasks</CardTitle>
+            <CardDescription>What you&apos;ll track during this challenge</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {(challenge.metrics as any[])?.map((metric: any, index: number) => (
-                <div key={metric.id} className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">{index + 1}.</span>
-                  <span className="font-medium">{metric.name}</span>
-                  <Badge variant="secondary" className="text-xs">
-                    {metric.type}
-                  </Badge>
-                  {metric.required && (
-                    <Badge variant="outline" className="text-xs">
-                      Required
-                    </Badge>
+          <CardContent className="space-y-6">
+            {/* Daily Tasks */}
+            {(() => {
+              const dailyTasks = (challenge.metrics as any[])?.filter(
+                (m: any) => m.frequency !== 'onetime'
+              ) || [];
+              const onetimeTasks = (challenge.metrics as any[])?.filter(
+                (m: any) => m.frequency === 'onetime'
+              ) || [];
+              const now = new Date();
+              const isActive = now >= new Date(challenge.starts_at) && now <= new Date(challenge.ends_at);
+
+              return (
+                <>
+                  {dailyTasks.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground mb-3">
+                        Daily Tasks ({dailyTasks.length})
+                      </h4>
+                      <div className="space-y-2">
+                        {dailyTasks.map((metric: any, index: number) => (
+                          <div key={metric.id} className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">{index + 1}.</span>
+                            <Link
+                              href={`/challenges/${challenge.id}/entries`}
+                              className="font-medium text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 hover:underline underline-offset-2 transition-colors"
+                            >
+                              {metric.name}
+                            </Link>
+                            <Badge variant="secondary" className="text-xs">
+                              {metric.type}
+                            </Badge>
+                            {metric.required && (
+                              <Badge variant="outline" className="text-xs">
+                                Required
+                              </Badge>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
-                </div>
-              ))}
-            </div>
+
+                  {/* One-time Tasks */}
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-sm font-medium text-muted-foreground">
+                        One-time Tasks ({onetimeTasks.length})
+                      </h4>
+                      {/* Debug: isCreator={String(isCreator)}, isActive={String(isActive)} */}
+                      {isCreator && (
+                        <AddOnetimeTaskButton
+                          challengeId={challenge.id}
+                          challengeEndDate={challenge.ends_at}
+                        />
+                      )}
+                    </div>
+                    {onetimeTasks.length > 0 ? (
+                      <div className="space-y-2">
+                        {onetimeTasks.map((metric: any, index: number) => (
+                          <div key={metric.id} className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm text-muted-foreground">{index + 1}.</span>
+                            <Link
+                              href={`/challenges/${challenge.id}/entries`}
+                              className="font-medium text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 hover:underline underline-offset-2 transition-colors"
+                            >
+                              {metric.name}
+                            </Link>
+                            <Badge variant="secondary" className="text-xs">
+                              {metric.type}
+                            </Badge>
+                            {metric.points && (
+                              <Badge variant="outline" className="text-xs">
+                                {metric.points} pts
+                              </Badge>
+                            )}
+                            {metric.deadline && (
+                              <DeadlineBadge deadline={metric.deadline} className="text-xs" />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic">
+                        {isCreator
+                          ? 'No one-time tasks yet. Add one above!'
+                          : 'No one-time tasks in this challenge.'}
+                      </p>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
           </CardContent>
         </Card>
       </div>
