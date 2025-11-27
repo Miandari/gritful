@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { TodayProgressCard } from '@/components/dashboard/TodayProgressCard';
 import { QuickStatsWidget } from '@/components/dashboard/QuickStatsWidget';
 import { DiscoverChallengesWidget } from '@/components/dashboard/DiscoverChallengesWidget';
+import { CreatorBadge } from '@/components/challenges/CreatorBadge';
 import { Trophy, TrendingUp, Target, Infinity } from 'lucide-react';
 
 export default async function DashboardPage() {
@@ -163,6 +164,7 @@ export default async function DashboardPage() {
               isNewUser={true}
               joinRequests={joinRequests || []}
               showMore={true}
+              currentUserId={user.id}
             />
           </div>
 
@@ -269,6 +271,7 @@ export default async function DashboardPage() {
                               </div>
                             </div>
                           </div>
+                          {challenge.creator_id === user.id && <CreatorBadge />}
                           <div className="flex gap-2 pt-2">
                             <Button asChild size="sm" className="flex-1">
                               <Link href={`/challenges/${challenge.id}`}>View</Link>
@@ -295,6 +298,7 @@ export default async function DashboardPage() {
                   isNewUser={false}
                   joinRequests={joinRequests || []}
                   showMore={true}
+                  currentUserId={user.id}
                 />
               </div>
             )}
@@ -354,6 +358,9 @@ export default async function DashboardPage() {
                           `${challenge.duration_days} days`
                         )}
                       </span>
+                    </div>
+                    <div className="mt-2">
+                      <CreatorBadge />
                     </div>
                   </CardContent>
                 </Card>

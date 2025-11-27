@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { format } from 'date-fns';
 import { Search, Lock, Infinity } from 'lucide-react';
 import RequestToJoinButton from '@/components/challenges/RequestToJoinButton';
+import { CreatorBadge } from '@/components/challenges/CreatorBadge';
 
 export default async function BrowseChallengesPage({
   searchParams,
@@ -239,6 +240,7 @@ export default async function BrowseChallengesPage({
                     )}
 
                     <div className="flex items-center gap-2 flex-wrap">
+                      {challenge.creator_id === user?.id && <CreatorBadge />}
                       {!challenge.is_public && (
                         <Badge variant="outline" className="text-xs flex items-center gap-1">
                           <Lock className="h-3 w-3" />

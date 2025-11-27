@@ -9,6 +9,7 @@ import { joinChallenge } from '@/app/actions/challenges';
 import { submitJoinRequest } from '@/app/actions/joinRequests';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { CreatorBadge } from '@/components/challenges/CreatorBadge';
 
 interface Challenge {
   id: string;
@@ -18,6 +19,7 @@ interface Challenge {
   starts_at: string;
   ends_at: string;
   is_public: boolean;
+  creator_id?: string;
   challenge_participants?: { count: number }[];
 }
 
@@ -31,9 +33,10 @@ interface DiscoverChallengesWidgetProps {
   isNewUser: boolean;
   joinRequests?: JoinRequest[];
   showMore?: boolean;
+  currentUserId?: string;
 }
 
-export function DiscoverChallengesWidget({ challenges, isNewUser, joinRequests = [], showMore = false }: DiscoverChallengesWidgetProps) {
+export function DiscoverChallengesWidget({ challenges, isNewUser, joinRequests = [], showMore = false, currentUserId }: DiscoverChallengesWidgetProps) {
   const router = useRouter();
   const [loadingChallenges, setLoadingChallenges] = useState<Set<string>>(new Set());
 
@@ -143,6 +146,9 @@ export function DiscoverChallengesWidget({ challenges, isNewUser, joinRequests =
                               <Calendar className="h-3 w-3" />
                               {daysRemaining}d left
                             </span>
+                            {currentUserId && challenge.creator_id === currentUserId && (
+                              <CreatorBadge className="ml-1" />
+                            )}
                           </div>
                         </div>
                       </div>
