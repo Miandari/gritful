@@ -2,21 +2,25 @@
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { format, addDays, subDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay } from 'date-fns';
+import { format, addDays, subDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { ChevronLeft, ChevronRight, CheckCircle, XCircle, Clock, Minus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle, CheckCircle2, XCircle, Clock, Minus, Circle } from 'lucide-react';
 import { useState } from 'react';
+import {
+  getDayStatus,
+  getDayStatusClasses,
+  DayStatus,
+  DailyEntry,
+  PeriodicCompletion,
+  ChallengeMetric,
+} from '@/lib/utils/calendarStatus';
 
 interface DateSelectorProps {
   challengeStartDate: Date;
   challengeEndDate: Date;
-  entries: Array<{
-    entry_date: string;
-    is_completed: boolean;
-    submitted_at?: string;
-    points_earned?: number;
-    bonus_points?: number;
-  }>;
+  entries: DailyEntry[];
+  periodicCompletions?: PeriodicCompletion[];
+  metrics?: ChallengeMetric[];
   onDateSelect: (date: string) => void;
   selectedDate: string | null;
 }
@@ -25,6 +29,8 @@ export function DateSelector({
   challengeStartDate,
   challengeEndDate,
   entries,
+  periodicCompletions = [],
+  metrics = [],
   onDateSelect,
   selectedDate,
 }: DateSelectorProps) {
@@ -41,42 +47,32 @@ export function DateSelector({
   const monthEnd = endOfMonth(currentMonth);
   const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
-  const getDayStatus = (day: Date) => {
-    const dayMidnight = new Date(day);
-    dayMidnight.setHours(0, 0, 0, 0);
-
-    // Outside challenge period
-    if (dayMidnight < challengeStartDate || dayMidnight > maxDate) {
-      return 'outside';
-    }
-
+  const calculateDayStatus = (day: Date): DayStatus => {
     const dayStr = format(day, 'yyyy-MM-dd');
-    const entry = entryMap.get(dayStr);
-    const isToday = format(new Date(), 'yyyy-MM-dd') === dayStr;
+    const entry = entryMap.get(dayStr) || null;
 
-    if (isToday && !entry?.is_completed) {
-      return 'today';
-    }
-
-    if (entry?.is_completed) {
-      const isLate = entry.submitted_at && entry.entry_date &&
-        (() => {
-          const submittedDate = new Date(entry.submitted_at);
-          const submittedDateStr = `${submittedDate.getFullYear()}-${String(submittedDate.getMonth() + 1).padStart(2, '0')}-${String(submittedDate.getDate()).padStart(2, '0')}`;
-          return submittedDateStr > entry.entry_date;
-        })();
-      return isLate ? 'late' : 'completed';
-    }
-
-    return 'missed';
+    return getDayStatus({
+      day,
+      challengeStartDate,
+      challengeEndDate,
+      dailyEntry: entry,
+      periodicCompletions,
+      metrics,
+    });
   };
 
-  const getDayIcon = (status: string) => {
+  const getDayIcon = (status: DayStatus) => {
     switch (status) {
+      case 'all_complete':
+        return <CheckCircle2 className="h-3 w-3 text-white" />;
       case 'completed':
         return <CheckCircle className="h-3 w-3 text-green-600 dark:text-green-400" />;
+      case 'partial':
+        return <CheckCircle className="h-3 w-3 text-green-500 dark:text-green-400" />;
       case 'late':
         return <Clock className="h-3 w-3 text-yellow-600 dark:text-yellow-400" />;
+      case 'period_pending':
+        return <Circle className="h-3 w-3 text-blue-600 dark:text-blue-400" />;
       case 'today':
         return <div className="h-3 w-3 rounded-full border-2 border-blue-600 dark:border-blue-400" />;
       case 'missed':
@@ -149,7 +145,7 @@ export function DateSelector({
 
           {allDays.map((day, index) => {
             const dayStr = format(day, 'yyyy-MM-dd');
-            const status = getDayStatus(day);
+            const status = calculateDayStatus(day);
             const isCurrentMonth = isSameMonth(day, currentMonth);
             const isSelected = selectedDate === dayStr;
             const entry = entryMap.get(dayStr);
@@ -167,24 +163,22 @@ export function DateSelector({
                   isClickable && 'hover:shadow-sm cursor-pointer',
                   !isClickable && 'cursor-not-allowed',
                   isSelected && 'ring-1 ring-primary',
-                  status === 'completed' && 'border-green-500 bg-green-500/10 dark:bg-green-500/20',
-                  status === 'late' && 'border-yellow-500 bg-yellow-500/10 dark:bg-yellow-500/20',
-                  status === 'today' && 'border-blue-500 bg-blue-500/10 dark:bg-blue-500/20',
-                  status === 'missed' && 'border-red-400 bg-red-400/10 dark:bg-red-400/20',
-                  status === 'outside' && 'border-border/50 bg-muted/50'
+                  getDayStatusClasses(status)
                 )}
               >
                 <span className={cn(
                   'font-medium',
                   !isCurrentMonth && 'text-muted-foreground/60',
-                  status === 'outside' && 'text-muted-foreground/40'
+                  status === 'outside' && 'text-muted-foreground/40',
+                  status === 'all_complete' && 'text-white dark:text-white'
                 )}>
                   {format(day, 'd')}
                 </span>
                 {points > 0 ? (
                   <span className={cn(
                     'font-bold',
-                    status === 'completed' && 'text-green-600 dark:text-green-400',
+                    (status === 'completed' || status === 'partial') && 'text-green-600 dark:text-green-400',
+                    status === 'all_complete' && 'text-white dark:text-white',
                     status === 'late' && 'text-yellow-600 dark:text-yellow-400'
                   )}>
                     {points}
@@ -211,6 +205,10 @@ export function DateSelector({
           <div className="flex items-center gap-0.5">
             <div className="h-2 w-2 rounded-full border border-blue-600 dark:border-blue-400" />
             <span>Today</span>
+          </div>
+          <div className="flex items-center gap-0.5">
+            <Circle className="h-2 w-2 text-blue-600 dark:text-blue-400" />
+            <span>Pending</span>
           </div>
           <div className="flex items-center gap-0.5">
             <XCircle className="h-2 w-2 text-red-500 dark:text-red-400" />

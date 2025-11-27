@@ -69,6 +69,8 @@ export default function EntriesClient({
           challengeStartDate={challengeStartDate}
           challengeEndDate={challengeEndDate}
           entries={entries}
+          periodicCompletions={periodicCompletions}
+          metrics={challenge.metrics || []}
           onDateSelect={setSelectedDate}
           selectedDate={selectedDate}
         />

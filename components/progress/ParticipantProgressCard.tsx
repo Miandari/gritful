@@ -7,6 +7,24 @@ import Link from 'next/link';
 interface ParticipantEntry {
   entry_date: string;
   is_completed: boolean;
+  points_earned?: number;
+  bonus_points?: number;
+  submitted_at?: string;
+}
+
+interface PeriodicCompletion {
+  task_id: string;
+  frequency: 'weekly' | 'monthly';
+  period_start: string;
+  period_end: string;
+  completed_at: string;
+  value: any;
+}
+
+interface ChallengeMetric {
+  id: string;
+  name: string;
+  frequency?: 'daily' | 'weekly' | 'monthly' | 'onetime';
 }
 
 interface ParticipantProgressCardProps {
@@ -21,6 +39,8 @@ interface ParticipantProgressCardProps {
     };
   };
   entries: ParticipantEntry[];
+  periodicCompletions?: PeriodicCompletion[];
+  metrics?: ChallengeMetric[];
   challengeStartDate: Date;
   challengeEndDate: Date;
   isCurrentUser: boolean;
@@ -31,6 +51,8 @@ interface ParticipantProgressCardProps {
 export function ParticipantProgressCard({
   participant,
   entries,
+  periodicCompletions = [],
+  metrics = [],
   challengeStartDate,
   challengeEndDate,
   isCurrentUser,
@@ -79,6 +101,8 @@ export function ParticipantProgressCard({
       <CardContent>
         <ProgressCalendar
           entries={entries}
+          periodicCompletions={periodicCompletions}
+          metrics={metrics}
           challengeStartDate={challengeStartDate}
           challengeEndDate={challengeEndDate}
         />

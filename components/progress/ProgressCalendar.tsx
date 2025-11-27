@@ -1,26 +1,34 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Minus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, addMonths, subMonths } from 'date-fns';
 import { cn } from '@/lib/utils';
-
-interface DailyEntry {
-  entry_date: string;
-  is_completed: boolean;
-  points_earned?: number;
-  bonus_points?: number;
-  submitted_at?: string;
-}
+import {
+  getDayStatus,
+  getDayStatusClasses,
+  DayStatus,
+  DailyEntry,
+  PeriodicCompletion,
+  ChallengeMetric,
+} from '@/lib/utils/calendarStatus';
 
 interface ProgressCalendarProps {
   entries: DailyEntry[];
+  periodicCompletions?: PeriodicCompletion[];
+  metrics?: ChallengeMetric[];
   challengeStartDate: Date;
   challengeEndDate: Date;
 }
 
-export function ProgressCalendar({ entries, challengeStartDate, challengeEndDate }: ProgressCalendarProps) {
+export function ProgressCalendar({
+  entries,
+  periodicCompletions = [],
+  metrics = [],
+  challengeStartDate,
+  challengeEndDate,
+}: ProgressCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const monthStart = startOfMonth(currentMonth);
@@ -32,62 +40,32 @@ export function ProgressCalendar({ entries, challengeStartDate, challengeEndDate
     entries.map(entry => [entry.entry_date, entry])
   );
 
-  const getDayStatus = (day: Date): 'completed' | 'late' | 'missed' | 'today' | 'future' | 'outside' => {
+  const calculateDayStatus = (day: Date): DayStatus => {
     const dayStr = format(day, 'yyyy-MM-dd');
+    const entry = entryMap.get(dayStr) || null;
 
-    // Create copies to avoid mutation and normalize to midnight local time
+    // Check if day is in the future (beyond today)
     const dayMidnight = new Date(day);
     dayMidnight.setHours(0, 0, 0, 0);
-
     const todayMidnight = new Date();
     todayMidnight.setHours(0, 0, 0, 0);
 
-    const startMidnight = new Date(challengeStartDate);
-    startMidnight.setHours(0, 0, 0, 0);
-
-    const endMidnight = new Date(challengeEndDate);
-    endMidnight.setHours(0, 0, 0, 0);
-
-    // Check if day is outside challenge period
-    if (dayMidnight < startMidnight || dayMidnight > endMidnight) {
-      return 'outside';
-    }
-
-    // Check if day is in the future
     if (dayMidnight > todayMidnight) {
-      return 'future';
+      return 'outside'; // Future days show as outside/neutral
     }
 
-    // Check if day is today
-    if (dayMidnight.getTime() === todayMidnight.getTime()) {
-      const entry = entryMap.get(dayStr);
-      if (entry?.is_completed) {
-        return 'completed';
-      }
-      return 'today';
-    }
-
-    // Check if there's an entry for this day (past days only)
-    const entry = entryMap.get(dayStr);
-    if (entry?.is_completed) {
-      // Check if it was submitted late (after the entry_date)
-      if (entry.submitted_at && entry.entry_date) {
-        // Compare the submission date (in local time) with the entry_date
-        const submittedDate = new Date(entry.submitted_at);
-        const submittedDateStr = `${submittedDate.getFullYear()}-${String(submittedDate.getMonth() + 1).padStart(2, '0')}-${String(submittedDate.getDate()).padStart(2, '0')}`;
-        // If submitted on a different day than entry_date, it's late
-        if (submittedDateStr > entry.entry_date) {
-          return 'late';
-        }
-      }
-      return 'completed';
-    }
-
-    return 'missed';
+    return getDayStatus({
+      day,
+      challengeStartDate,
+      challengeEndDate,
+      dailyEntry: entry,
+      periodicCompletions,
+      metrics,
+    });
   };
 
-  const getDayPoints = (day: Date, status: string): number | null => {
-    if (status === 'completed' || status === 'late' || status === 'missed') {
+  const getDayPoints = (day: Date, status: DayStatus): number | null => {
+    if (status === 'completed' || status === 'all_complete' || status === 'partial' || status === 'late' || status === 'missed') {
       const dayStr = format(day, 'yyyy-MM-dd');
       const entry = entryMap.get(dayStr);
       if (entry) {
@@ -95,7 +73,7 @@ export function ProgressCalendar({ entries, challengeStartDate, challengeEndDate
       }
       return 0; // Missed day = 0 points
     }
-    return null; // Today, future, or outside - no points to show
+    return null; // Today, future, pending, or outside - no points to show
   };
 
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -143,7 +121,7 @@ export function ProgressCalendar({ entries, challengeStartDate, challengeEndDate
         ))}
 
         {allDays.map((day, index) => {
-          const status = getDayStatus(day);
+          const status = calculateDayStatus(day);
           const isCurrentMonth = isSameMonth(day, currentMonth);
           const points = getDayPoints(day, status);
 
@@ -153,25 +131,22 @@ export function ProgressCalendar({ entries, challengeStartDate, challengeEndDate
               className={cn(
                 'aspect-square flex flex-col items-center justify-center rounded-lg border-2 transition-colors',
                 !isCurrentMonth && 'opacity-50',
-                status === 'completed' && 'border-green-500 bg-green-500/10 dark:bg-green-500/20',
-                status === 'late' && 'border-yellow-500 bg-yellow-500/10 dark:bg-yellow-500/20',
-                status === 'missed' && 'border-red-400 bg-red-400/10 dark:bg-red-400/20',
-                status === 'today' && 'border-blue-500 bg-blue-500/10 dark:bg-blue-500/20',
-                status === 'future' && 'border-border bg-card',
-                status === 'outside' && 'border-border/50 bg-muted/50'
+                getDayStatusClasses(status)
               )}
             >
               <span className={cn(
                 'text-xs font-medium mb-0.5',
                 !isCurrentMonth && 'text-muted-foreground/60',
-                status === 'outside' && 'text-muted-foreground/40'
+                status === 'outside' && 'text-muted-foreground/40',
+                status === 'all_complete' && 'text-white dark:text-white'
               )}>
                 {format(day, 'd')}
               </span>
               {points !== null ? (
                 <span className={cn(
                   'text-sm font-bold',
-                  status === 'completed' && 'text-green-600 dark:text-green-400',
+                  (status === 'completed' || status === 'partial') && 'text-green-600 dark:text-green-400',
+                  status === 'all_complete' && 'text-white dark:text-white',
                   status === 'late' && 'text-yellow-600 dark:text-yellow-400',
                   status === 'missed' && 'text-red-600 dark:text-red-400'
                 )}>
@@ -190,7 +165,7 @@ export function ProgressCalendar({ entries, challengeStartDate, challengeEndDate
           <div className="w-6 h-6 border-2 border-green-500 bg-green-500/10 dark:bg-green-500/20 rounded flex items-center justify-center">
             <span className="text-xs font-bold text-green-600 dark:text-green-400">12</span>
           </div>
-          <span>On Time</span>
+          <span>Done</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 border-2 border-yellow-500 bg-yellow-500/10 dark:bg-yellow-500/20 rounded flex items-center justify-center">
@@ -200,7 +175,7 @@ export function ProgressCalendar({ entries, challengeStartDate, challengeEndDate
         </div>
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 border-2 border-blue-500 bg-blue-500/10 dark:bg-blue-500/20 rounded" />
-          <span>Today</span>
+          <span>Today/Pending</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 border-2 border-red-400 bg-red-400/10 dark:bg-red-400/20 rounded flex items-center justify-center">

@@ -64,6 +64,12 @@ export default async function ProgressPage({
     .select('task_id, points_earned, completed_at')
     .eq('participant_id', myParticipation.id);
 
+  // Fetch my periodic task completions (weekly/monthly)
+  const { data: myPeriodicCompletions } = await supabase
+    .from('periodic_task_completions')
+    .select('*')
+    .eq('participant_id', myParticipation.id);
+
   // Calculate one-time task stats
   const onetimeTasks = (challenge.metrics as any[])?.filter(
     (m: any) => m.frequency === 'onetime'
@@ -283,6 +289,8 @@ export default async function ProgressPage({
             {/* Calendar View */}
             <ProgressCalendar
               entries={myEntries || []}
+              periodicCompletions={myPeriodicCompletions || []}
+              metrics={challenge.metrics || []}
               challengeStartDate={new Date(challenge.starts_at)}
               challengeEndDate={new Date(challenge.ends_at)}
             />

@@ -8,14 +8,25 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card } from '@/components/ui/card';
-import { Clock, CheckCircle2, ChevronDown, ChevronUp, Loader2, ArrowUpRight } from 'lucide-react';
+import { Clock, CheckCircle2, ChevronDown, ChevronUp, Loader2, ArrowUpRight, Trash2 } from 'lucide-react';
 import { PeriodBadge } from './PeriodBadge';
-import { savePeriodicTaskCompletion } from '@/app/actions/periodicTasks';
+import { savePeriodicTaskCompletion, deletePeriodicTaskCompletion } from '@/app/actions/periodicTasks';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 import { FileUpload } from '@/components/ui/file-upload';
-import { Period } from '@/lib/utils/periods';
+import { Period, formatPeriodKey } from '@/lib/utils/periods';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface Task {
   id: string;
@@ -57,9 +68,29 @@ export function PeriodicTaskInput({
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [value, setValue] = useState<any>(completedValue ?? getDefaultValue(task.type));
 
-  // For completed tasks, just show the summary
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const periodStart = formatPeriodKey(currentPeriod);
+      const result = await deletePeriodicTaskCompletion(participantId, task.id, periodStart);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to remove completion');
+      }
+
+      toast.success(`${task.name} completion removed`);
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to remove completion');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // For completed tasks, show the summary with delete option
   if (isCompletedThisPeriod) {
     return (
       <Card className="p-4 bg-muted/30 border-green-500/20">
@@ -77,7 +108,44 @@ export function PeriodicTaskInput({
               <span className="text-xs text-muted-foreground">+{task.points} pts</span>
             )}
           </div>
-          <PeriodBadge period={currentPeriod} completedAt={completedAt} frequency={frequency} />
+          <div className="flex items-center gap-2">
+            <PeriodBadge period={currentPeriod} completedAt={completedAt} frequency={frequency} />
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isDeleting}
+                  className="h-8 w-8 p-0 border-red-500/30 text-red-600 dark:text-red-400 hover:bg-red-500/10 dark:hover:bg-red-500/20"
+                >
+                  {isDeleting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Remove Completion</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to remove this {frequency} task completion?
+                    You can complete it again later.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    className="bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
+                  >
+                    {isDeleting ? 'Removing...' : 'Remove'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </div>
         {completedValue && task.type !== 'boolean' && (
           <p className="text-sm text-muted-foreground mt-2 ml-7">
