@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { TodayProgressCard } from '@/components/dashboard/TodayProgressCard';
 import { QuickStatsWidget } from '@/components/dashboard/QuickStatsWidget';
 import { DiscoverChallengesWidget } from '@/components/dashboard/DiscoverChallengesWidget';
-import { CreatorBadge } from '@/components/challenges/CreatorBadge';
+import { CreatorRibbon } from '@/components/challenges/CreatorBadge';
 import { Trophy, TrendingUp, Target, Infinity } from 'lucide-react';
 
 export default async function DashboardPage() {
@@ -214,9 +214,12 @@ export default async function DashboardPage() {
                   const progress = isOngoing ? null : Math.min(100, (daysElapsed / challenge.duration_days) * 100);
                   const todayEntry = todayEntries?.find(e => e.participant_id === participation.id);
 
+                  const isCreator = challenge.creator_id === user.id;
+
                   return (
-                    <Card key={participation.id} className="transition-shadow hover:shadow-lg">
-                      <CardHeader>
+                    <Card key={participation.id} className="relative overflow-hidden transition-shadow hover:shadow-lg">
+                      {isCreator && <CreatorRibbon showOngoing={isOngoing} />}
+                      <CardHeader className={isCreator ? 'pt-8' : ''}>
                         <div className="flex items-start justify-between">
                           <div className="flex-1 min-w-0">
                             <CardTitle className="line-clamp-1">{challenge.name}</CardTitle>
@@ -224,7 +227,7 @@ export default async function DashboardPage() {
                               {challenge.description || 'No description'}
                             </CardDescription>
                           </div>
-                          {isOngoing && (
+                          {!isCreator && isOngoing && (
                             <Badge variant="outline" className="ml-2 shrink-0 flex items-center gap-1">
                               <Infinity className="h-3 w-3" />
                               Ongoing
@@ -271,7 +274,6 @@ export default async function DashboardPage() {
                               </div>
                             </div>
                           </div>
-                          {challenge.creator_id === user.id && <CreatorBadge />}
                           <div className="flex gap-2 pt-2">
                             <Button asChild size="sm" className="flex-1">
                               <Link href={`/challenges/${challenge.id}`}>View</Link>
@@ -334,38 +336,32 @@ export default async function DashboardPage() {
         <div>
           <h2 className="mb-4 text-2xl font-semibold text-foreground">Challenges You Created</h2>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {createdOnlyChallenges.map((challenge: any) => (
-              <Link key={challenge.id} href={`/challenges/${challenge.id}`}>
-                <Card className="transition-shadow hover:shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="line-clamp-1">{challenge.name}</CardTitle>
-                    <CardDescription className="line-clamp-2">
-                      {challenge.description || 'No description'}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex justify-between items-center">
-                      <Badge variant={challenge.is_public ? 'default' : 'secondary'}>
-                        {challenge.is_public ? 'Public' : 'Private'}
-                      </Badge>
-                      <span className="text-sm text-muted-foreground">
-                        {challenge.ends_at === null ? (
-                          <span className="flex items-center gap-1">
-                            <Infinity className="h-3 w-3" />
-                            Ongoing
-                          </span>
-                        ) : (
-                          `${challenge.duration_days} days`
-                        )}
-                      </span>
-                    </div>
-                    <div className="mt-2">
-                      <CreatorBadge />
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
+            {createdOnlyChallenges.map((challenge: any) => {
+              const isOngoing = challenge.ends_at === null;
+              return (
+                <Link key={challenge.id} href={`/challenges/${challenge.id}`}>
+                  <Card className="relative overflow-hidden transition-shadow hover:shadow-lg">
+                    <CreatorRibbon showOngoing={isOngoing} />
+                    <CardHeader className="pt-8">
+                      <CardTitle className="line-clamp-1">{challenge.name}</CardTitle>
+                      <CardDescription className="line-clamp-2">
+                        {challenge.description || 'No description'}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex justify-between items-center">
+                        <Badge variant={challenge.is_public ? 'default' : 'secondary'}>
+                          {challenge.is_public ? 'Public' : 'Private'}
+                        </Badge>
+                        <span className="text-sm text-muted-foreground">
+                          {isOngoing ? 'No end date' : `${challenge.duration_days} days`}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              );
+            })}
           </div>
         </div>
       )}

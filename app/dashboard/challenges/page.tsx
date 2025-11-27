@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Trophy, Calendar, Users, TrendingUp, Plus, Search, Infinity, Clock } from 'lucide-react';
-import { CreatorBadge } from '@/components/challenges/CreatorBadge';
+import { CreatorRibbon } from '@/components/challenges/CreatorBadge';
 import { format } from 'date-fns';
 
 export default async function ChallengesPage({
@@ -278,9 +278,10 @@ export default async function ChallengesPage({
                 return (
                   <Card
                     key={participation.id}
-                    className="transition-shadow hover:shadow-lg"
+                    className="relative overflow-hidden transition-shadow hover:shadow-lg"
                   >
-                    <CardHeader>
+                    {isCreator && <CreatorRibbon showOngoing={isOngoing} />}
+                    <CardHeader className={isCreator ? 'pt-8' : ''}>
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0">
                           <CardTitle className="line-clamp-1">{challenge.name}</CardTitle>
@@ -288,20 +289,13 @@ export default async function ChallengesPage({
                             {challenge.description || 'No description'}
                           </CardDescription>
                         </div>
-                        {isOngoing ? (
+                        {!isCreator && isOngoing && (
                           <Badge
                             variant="outline"
                             className="ml-2 shrink-0 flex items-center gap-1"
                           >
                             <Infinity className="h-3 w-3" />
                             Ongoing
-                          </Badge>
-                        ) : (
-                          <Badge
-                            variant={challenge.is_public ? 'default' : 'secondary'}
-                            className="ml-2 shrink-0"
-                          >
-                            {challenge.is_public ? 'Public' : 'Private'}
                           </Badge>
                         )}
                       </div>
@@ -348,7 +342,6 @@ export default async function ChallengesPage({
                             </div>
                           </div>
                         </div>
-                        {isCreator && <CreatorBadge />}
                         <div className="flex gap-2 pt-2">
                           <Button asChild size="sm" className="flex-1">
                             <Link href={`/challenges/${challenge.id}`}>View Details</Link>
@@ -394,8 +387,9 @@ export default async function ChallengesPage({
 
                 return (
                   <Link key={challenge.id} href={`/challenges/${challenge.id}`}>
-                    <Card className="transition-shadow hover:shadow-lg h-full">
-                      <CardHeader>
+                    <Card className="relative overflow-hidden transition-shadow hover:shadow-lg h-full">
+                      <CreatorRibbon showOngoing={isOngoing} />
+                      <CardHeader className="pt-8">
                         <div className="flex items-start justify-between">
                           <div className="flex-1 min-w-0">
                             <CardTitle className="line-clamp-1">{challenge.name}</CardTitle>
@@ -403,22 +397,6 @@ export default async function ChallengesPage({
                               {challenge.description || 'No description'}
                             </CardDescription>
                           </div>
-                          {isOngoing ? (
-                            <Badge
-                              variant="outline"
-                              className="ml-2 shrink-0 flex items-center gap-1"
-                            >
-                              <Infinity className="h-3 w-3" />
-                              Ongoing
-                            </Badge>
-                          ) : (
-                            <Badge
-                              variant={challenge.is_public ? 'default' : 'secondary'}
-                              className="ml-2 shrink-0"
-                            >
-                              {challenge.is_public ? 'Public' : 'Private'}
-                            </Badge>
-                          )}
                         </div>
                       </CardHeader>
                       <CardContent>
@@ -454,9 +432,6 @@ export default async function ChallengesPage({
                               <span className="font-medium">{participation.total_points}</span>
                             </div>
                           )}
-                          <div className="pt-2">
-                            <CreatorBadge />
-                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -490,8 +465,9 @@ export default async function ChallengesPage({
 
                 return (
                   <Link key={participation.id} href={`/challenges/${challenge.id}`}>
-                    <Card className="transition-shadow hover:shadow-lg h-full opacity-80">
-                      <CardHeader>
+                    <Card className="relative overflow-hidden transition-shadow hover:shadow-lg h-full opacity-80">
+                      {isCreator && <CreatorRibbon />}
+                      <CardHeader className={isCreator ? 'pt-8' : ''}>
                         <div className="flex items-start justify-between">
                           <div className="flex-1 min-w-0">
                             <CardTitle className="line-clamp-1">{challenge.name}</CardTitle>
@@ -499,9 +475,6 @@ export default async function ChallengesPage({
                               {challenge.description || 'No description'}
                             </CardDescription>
                           </div>
-                          <Badge variant="outline" className="shrink-0">
-                            Completed
-                          </Badge>
                         </div>
                       </CardHeader>
                       <CardContent>
@@ -538,9 +511,6 @@ export default async function ChallengesPage({
                               Ended: {format(new Date(challenge.ends_at), 'MMM d, yyyy')}
                             </div>
                           )}
-
-                          {/* Creator badge if applicable */}
-                          {isCreator && <CreatorBadge />}
                         </div>
                       </CardContent>
                     </Card>

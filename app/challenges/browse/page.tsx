@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { format } from 'date-fns';
 import { Search, Lock, Infinity } from 'lucide-react';
 import RequestToJoinButton from '@/components/challenges/RequestToJoinButton';
-import { CreatorBadge } from '@/components/challenges/CreatorBadge';
+import { CreatorRibbon } from '@/components/challenges/CreatorBadge';
 
 export default async function BrowseChallengesPage({
   searchParams,
@@ -161,10 +161,13 @@ export default async function BrowseChallengesPage({
             ? null
             : Math.min(100, Math.max(0, (daysElapsed / challenge.duration_days) * 100));
 
+          const isCreator = challenge.creator_id === user?.id;
+
           return (
             <Link key={challenge.id} href={`/challenges/${challenge.id}`}>
-              <Card className="h-full transition-shadow hover:shadow-lg">
-                <CardHeader>
+              <Card className="relative overflow-hidden h-full transition-shadow hover:shadow-lg">
+                {isCreator && <CreatorRibbon />}
+                <CardHeader className={isCreator ? 'pt-8' : ''}>
                   <div className="flex items-start justify-between gap-2">
                     <CardTitle className="line-clamp-1 flex-1 min-w-0">{challenge.name}</CardTitle>
                     <Badge variant={status.variant} className="shrink-0">
@@ -240,7 +243,6 @@ export default async function BrowseChallengesPage({
                     )}
 
                     <div className="flex items-center gap-2 flex-wrap">
-                      {challenge.creator_id === user?.id && <CreatorBadge />}
                       {!challenge.is_public && (
                         <Badge variant="outline" className="text-xs flex items-center gap-1">
                           <Lock className="h-3 w-3" />

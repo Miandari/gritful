@@ -9,7 +9,7 @@ import { joinChallenge } from '@/app/actions/challenges';
 import { submitJoinRequest } from '@/app/actions/joinRequests';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CreatorBadge } from '@/components/challenges/CreatorBadge';
+import { CreatorRibbon } from '@/components/challenges/CreatorBadge';
 
 interface Challenge {
   id: string;
@@ -111,13 +111,16 @@ export function DiscoverChallengesWidget({ challenges, isNewUser, joinRequests =
                 const joinRequest = getJoinRequestStatus(challenge.id);
                 const isLoading = loadingChallenges.has(challenge.id);
 
+                const isCreator = currentUserId && challenge.creator_id === currentUserId;
+
                 return (
-                  <div key={challenge.id} className="group rounded-lg border bg-card p-4 transition-all hover:border-blue-400 hover:shadow-md">
+                  <div key={challenge.id} className="group relative overflow-hidden rounded-lg border bg-card p-4 transition-all hover:border-blue-400 hover:shadow-md">
+                    {isCreator && <CreatorRibbon />}
                     <Link
                       href={`/challenges/${challenge.id}`}
                       className="block"
                     >
-                      <div className="space-y-2">
+                      <div className={`space-y-2 ${isCreator ? 'pt-4' : ''}`}>
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
@@ -146,9 +149,6 @@ export function DiscoverChallengesWidget({ challenges, isNewUser, joinRequests =
                               <Calendar className="h-3 w-3" />
                               {daysRemaining}d left
                             </span>
-                            {currentUserId && challenge.creator_id === currentUserId && (
-                              <CreatorBadge className="ml-1" />
-                            )}
                           </div>
                         </div>
                       </div>
