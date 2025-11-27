@@ -8,7 +8,9 @@ import { TodayProgressCard } from '@/components/dashboard/TodayProgressCard';
 import { QuickStatsWidget } from '@/components/dashboard/QuickStatsWidget';
 import { DiscoverChallengesWidget } from '@/components/dashboard/DiscoverChallengesWidget';
 import { CreatorRibbon } from '@/components/challenges/CreatorBadge';
-import { Trophy, TrendingUp, Target, Infinity } from 'lucide-react';
+import { Trophy, TrendingUp, Target, Infinity, Clock } from 'lucide-react';
+import { getChallengeState, ChallengeStateResult } from '@/lib/utils/challengeState';
+import { cn } from '@/lib/utils';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -46,20 +48,28 @@ export default async function DashboardPage() {
     .order('created_at', { ascending: false });
 
   // Separate active challenges (where user is participant) and created-only challenges
+  // Only include challenges that are active, in grace period, or ongoing
   const activeChallenges: any[] = [];
   const createdOnlyChallenges: any[] = [];
 
   if (myParticipations) {
     for (const participation of myParticipations) {
       if (participation.challenges) {
-        activeChallenges.push({
-          id: participation.id,
-          challenge_id: participation.challenge_id,
-          current_streak: participation.current_streak,
-          longest_streak: participation.longest_streak,
-          total_points: participation.total_points || 0,
-          challenge: participation.challenges
-        });
+        const challengeState = getChallengeState(participation.challenges);
+        // Only include if challenge is active, in grace period, or ongoing (not archived)
+        if (challengeState.state === 'active' ||
+            challengeState.state === 'grace_period' ||
+            challengeState.state === 'ongoing') {
+          activeChallenges.push({
+            id: participation.id,
+            challenge_id: participation.challenge_id,
+            current_streak: participation.current_streak,
+            longest_streak: participation.longest_streak,
+            total_points: participation.total_points || 0,
+            challenge: participation.challenges,
+            challengeState,
+          });
+        }
       }
     }
   }
@@ -199,6 +209,7 @@ export default async function DashboardPage() {
               <div className="grid gap-4 md:grid-cols-2">
                 {activeChallenges.map((participation: any) => {
                   const challenge = participation.challenge;
+                  const challengeState = participation.challengeState as ChallengeStateResult;
                   if (!challenge) return null;
 
                   const today = new Date();
@@ -215,9 +226,16 @@ export default async function DashboardPage() {
                   const todayEntry = todayEntries?.find(e => e.participant_id === participation.id);
 
                   const isCreator = challenge.creator_id === user.id;
+                  const isGracePeriod = challengeState?.state === 'grace_period';
 
                   return (
-                    <Card key={participation.id} className="relative overflow-hidden transition-shadow hover:shadow-lg">
+                    <Card
+                      key={participation.id}
+                      className={cn(
+                        "relative overflow-hidden transition-shadow hover:shadow-lg",
+                        isGracePeriod && "border-2 border-amber-400 bg-amber-50/30 dark:bg-amber-950/20"
+                      )}
+                    >
                       {isCreator && <CreatorRibbon showOngoing={isOngoing} />}
                       <CardHeader className={isCreator ? 'pt-8' : ''}>
                         <div className="flex items-start justify-between">
@@ -227,7 +245,16 @@ export default async function DashboardPage() {
                               {challenge.description || 'No description'}
                             </CardDescription>
                           </div>
-                          {!isCreator && isOngoing && (
+                          {isGracePeriod && (
+                            <Badge
+                              variant="outline"
+                              className="ml-2 shrink-0 flex items-center gap-1 bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-600"
+                            >
+                              <Clock className="h-3 w-3" />
+                              {challengeState.daysRemainingInGrace}d grace
+                            </Badge>
+                          )}
+                          {!isCreator && isOngoing && !isGracePeriod && (
                             <Badge variant="outline" className="ml-2 shrink-0 flex items-center gap-1">
                               <Infinity className="h-3 w-3" />
                               Ongoing

@@ -32,6 +32,7 @@ const initialState = {
     is_template: false,
     lock_entries_after_day: false,
     failure_mode: 'flexible' as const,
+    grace_period_days: 7,
   },
   metrics: [],
 };

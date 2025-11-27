@@ -8,6 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Trophy, Calendar, Users, TrendingUp, Plus, Search, Infinity, Clock } from 'lucide-react';
 import { CreatorRibbon } from '@/components/challenges/CreatorBadge';
 import { format } from 'date-fns';
+import { getChallengeState, ChallengeStateResult } from '@/lib/utils/challengeState';
+import { cn } from '@/lib/utils';
 
 export default async function ChallengesPage({
   searchParams,
@@ -60,19 +62,18 @@ export default async function ChallengesPage({
     .eq('user_id', user.id)
     .eq('status', 'active');
 
-  // Filter to only active challenges that haven't ended
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-
+  // Filter challenges using the challenge state utility
+  // Active = active, grace_period, or ongoing
+  // History = archived (past grace period)
   const activeChallenges: any[] = [];
   if (myParticipations) {
     for (const participation of myParticipations) {
       if (participation.challenges) {
-        const endDate = participation.challenges.ends_at
-          ? new Date(participation.challenges.ends_at)
-          : null;
-        // Include if ongoing (no end date) or end date >= today
-        if (endDate === null || endDate >= now) {
+        const challengeState = getChallengeState(participation.challenges);
+        // Include if active, in grace period, or ongoing (not archived)
+        if (challengeState.state === 'active' ||
+            challengeState.state === 'grace_period' ||
+            challengeState.state === 'ongoing') {
           activeChallenges.push({
             id: participation.id,
             challenge_id: participation.challenge_id,
@@ -80,6 +81,7 @@ export default async function ChallengesPage({
             longest_streak: participation.longest_streak,
             total_points: participation.total_points || 0,
             challenge: participation.challenges,
+            challengeState,
           });
         }
       }
@@ -89,10 +91,11 @@ export default async function ChallengesPage({
   // Build history list (deduplicated)
   const historyMap = new Map<string, any>();
 
-  // Add from status-based history
+  // Add from status-based history (completed/failed)
   if (historyByStatus) {
     for (const participation of historyByStatus) {
       if (participation.challenges) {
+        const challengeState = getChallengeState(participation.challenges);
         historyMap.set(participation.challenge_id, {
           id: participation.id,
           challenge_id: participation.challenge_id,
@@ -101,20 +104,19 @@ export default async function ChallengesPage({
           total_points: participation.total_points || 0,
           status: participation.status,
           challenge: participation.challenges,
+          challengeState,
         });
       }
     }
   }
 
-  // Add from date-based history (challenges that ended)
+  // Add from date-based history (challenges that are archived - past grace period)
   if (historyByEndDate) {
     for (const participation of historyByEndDate) {
       if (participation.challenges) {
-        const endDate = participation.challenges.ends_at
-          ? new Date(participation.challenges.ends_at)
-          : null;
-        // Only include if challenge has ended (end date < today)
-        if (endDate !== null && endDate < now) {
+        const challengeState = getChallengeState(participation.challenges);
+        // Only include if challenge is archived (past grace period)
+        if (challengeState.state === 'archived') {
           historyMap.set(participation.challenge_id, {
             id: participation.id,
             challenge_id: participation.challenge_id,
@@ -123,6 +125,7 @@ export default async function ChallengesPage({
             total_points: participation.total_points || 0,
             status: participation.status,
             challenge: participation.challenges,
+            challengeState,
           });
         }
       }
@@ -253,6 +256,7 @@ export default async function ChallengesPage({
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {activeChallenges.map((participation: any) => {
                 const challenge = participation.challenge;
+                const challengeState = participation.challengeState as ChallengeStateResult;
                 if (!challenge) return null;
 
                 const cardToday = new Date();
@@ -274,11 +278,15 @@ export default async function ChallengesPage({
                   (e) => e.participant_id === participation.id
                 );
                 const isCreator = challenge.creator_id === user.id;
+                const isGracePeriod = challengeState?.state === 'grace_period';
 
                 return (
                   <Card
                     key={participation.id}
-                    className="relative overflow-hidden transition-shadow hover:shadow-lg"
+                    className={cn(
+                      "relative overflow-hidden transition-shadow hover:shadow-lg",
+                      isGracePeriod && "border-2 border-amber-400 bg-amber-50/30 dark:bg-amber-950/20"
+                    )}
                   >
                     {isCreator && <CreatorRibbon showOngoing={isOngoing} />}
                     <CardHeader className={isCreator ? 'pt-8' : ''}>
@@ -289,7 +297,16 @@ export default async function ChallengesPage({
                             {challenge.description || 'No description'}
                           </CardDescription>
                         </div>
-                        {!isCreator && isOngoing && (
+                        {isGracePeriod && (
+                          <Badge
+                            variant="outline"
+                            className="ml-2 shrink-0 flex items-center gap-1 bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-600"
+                          >
+                            <Clock className="h-3 w-3" />
+                            {challengeState.daysRemainingInGrace}d grace
+                          </Badge>
+                        )}
+                        {!isCreator && isOngoing && !isGracePeriod && (
                           <Badge
                             variant="outline"
                             className="ml-2 shrink-0 flex items-center gap-1"

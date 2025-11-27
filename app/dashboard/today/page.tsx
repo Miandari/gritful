@@ -4,11 +4,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Calendar, CheckCircle, XCircle, ArrowUpRight } from 'lucide-react';
+import { Calendar, CheckCircle, XCircle, ArrowUpRight, Clock, Infinity } from 'lucide-react';
 import { format } from 'date-fns';
 import { getTodayDateString } from '@/lib/utils/dates';
 import Link from 'next/link';
 import DailyEntryForm from '@/components/daily-entry/DailyEntryForm';
+import { getChallengeState, ChallengeStateResult } from '@/lib/utils/challengeState';
+import { cn } from '@/lib/utils';
 
 export default async function TodayPage() {
   const supabase = await createClient();
@@ -42,17 +44,17 @@ export default async function TodayPage() {
     for (const participation of myParticipations) {
       const challenge = participation.challenges;
       if (challenge) {
-        // Check if challenge is currently active (between start and end dates)
-        const now = new Date();
-        const startDate = new Date(challenge.starts_at);
-        const endDate = new Date(challenge.ends_at);
+        // Use the challenge state utility to determine if entries are allowed
+        const challengeState = getChallengeState(challenge);
 
-        if (now >= startDate && now <= endDate) {
+        // Only show challenges where entry is allowed (active, grace_period, or ongoing)
+        if (challengeState.isEntryAllowed) {
           activeChallenges.push({
             ...challenge,
             participation_id: participation.id,
             current_streak: participation.current_streak,
             longest_streak: participation.longest_streak,
+            challengeState,
           });
 
           // Get today's entry if it exists
@@ -155,13 +157,22 @@ export default async function TodayPage() {
           const entry = todayEntries[challenge.participation_id];
           const isCompleted = entry?.is_completed;
           const isLocked = entry?.is_locked;
+          const challengeState = challenge.challengeState as ChallengeStateResult;
+          const isGracePeriod = challengeState?.state === 'grace_period';
+          const isOngoing = challenge.ends_at === null;
           const daysElapsed = Math.floor(
             (new Date().getTime() - new Date(challenge.starts_at).getTime()) /
               (1000 * 60 * 60 * 24)
           );
 
           return (
-            <Card key={challenge.id} className={isCompleted ? 'border-green-500 border-2' : ''}>
+            <Card
+              key={challenge.id}
+              className={cn(
+                isCompleted && 'border-green-500 border-2',
+                isGracePeriod && !isCompleted && 'border-2 border-amber-400 bg-amber-50/30 dark:bg-amber-950/20'
+              )}
+            >
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>
@@ -175,10 +186,26 @@ export default async function TodayPage() {
                       </Link>
                     </CardTitle>
                     <CardDescription className="mt-1">
-                      Day {daysElapsed + 1} of {challenge.duration_days}
+                      {isOngoing ? (
+                        <span className="flex items-center gap-1">
+                          <Infinity className="h-3 w-3" />
+                          Day {daysElapsed + 1}
+                        </span>
+                      ) : (
+                        `Day ${Math.min(daysElapsed + 1, challenge.duration_days)} of ${challenge.duration_days}`
+                      )}
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
+                    {isGracePeriod && (
+                      <Badge
+                        variant="outline"
+                        className="bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-600"
+                      >
+                        <Clock className="mr-1 h-3 w-3" />
+                        {challengeState.daysRemainingInGrace}d grace
+                      </Badge>
+                    )}
                     <Badge variant="secondary">{challenge.current_streak} day streak</Badge>
                     {isCompleted && (
                       <Badge variant="default" className="bg-green-600 dark:bg-green-600">

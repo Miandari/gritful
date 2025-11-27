@@ -10,6 +10,7 @@ interface UpdateChallengeData {
   streak_bonus_points: number;
   enable_perfect_day_bonus: boolean;
   perfect_day_bonus_points: number;
+  grace_period_days?: number;
 }
 
 export async function updateChallengeSettings(data: UpdateChallengeData) {
@@ -40,15 +41,22 @@ export async function updateChallengeSettings(data: UpdateChallengeData) {
     }
 
     // Update the challenge
+    const updateData: any = {
+      metrics: data.metrics,
+      enable_streak_bonus: data.enable_streak_bonus,
+      streak_bonus_points: data.streak_bonus_points,
+      enable_perfect_day_bonus: data.enable_perfect_day_bonus,
+      perfect_day_bonus_points: data.perfect_day_bonus_points,
+    };
+
+    // Only update grace_period_days if provided
+    if (data.grace_period_days !== undefined) {
+      updateData.grace_period_days = data.grace_period_days;
+    }
+
     const { error } = await supabase
       .from('challenges')
-      .update({
-        metrics: data.metrics,
-        enable_streak_bonus: data.enable_streak_bonus,
-        streak_bonus_points: data.streak_bonus_points,
-        enable_perfect_day_bonus: data.enable_perfect_day_bonus,
-        perfect_day_bonus_points: data.perfect_day_bonus_points,
-      })
+      .update(updateData)
       .eq('id', data.challengeId);
 
     if (error) {

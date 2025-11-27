@@ -61,6 +61,7 @@ export async function createChallenge(data: ChallengeFormData) {
         streak_bonus_points: data.streak_bonus_points ?? 5,
         enable_perfect_day_bonus: data.enable_perfect_day_bonus ?? false,
         perfect_day_bonus_points: data.perfect_day_bonus_points ?? 10,
+        grace_period_days: data.grace_period_days ?? 7,
         metrics: data.metrics,
         creator_settings: {},
       } as any)

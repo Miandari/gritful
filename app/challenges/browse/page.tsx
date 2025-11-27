@@ -5,9 +5,11 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import { Search, Lock, Infinity } from 'lucide-react';
+import { Search, Lock, Infinity, Clock } from 'lucide-react';
 import RequestToJoinButton from '@/components/challenges/RequestToJoinButton';
 import { CreatorRibbon } from '@/components/challenges/CreatorBadge';
+import { getChallengeState } from '@/lib/utils/challengeState';
+import { cn } from '@/lib/utils';
 
 export default async function BrowseChallengesPage({
   searchParams,
@@ -96,19 +98,26 @@ export default async function BrowseChallengesPage({
   );
 
   const getChallengeStatus = (challenge: any) => {
-    const now = new Date();
-    const startDate = new Date(challenge.starts_at);
-    const endDate = challenge.ends_at ? new Date(challenge.ends_at) : null;
+    const challengeState = getChallengeState(challenge);
 
-    if (now < startDate) {
-      return { label: 'Upcoming', variant: 'secondary' as const };
-    } else if (endDate === null) {
-      // Ongoing challenge (no end date)
-      return { label: 'Ongoing', variant: 'default' as const };
-    } else if (now > endDate) {
-      return { label: 'Completed', variant: 'outline' as const };
-    } else {
-      return { label: 'Active', variant: 'default' as const };
+    switch (challengeState.state) {
+      case 'upcoming':
+        return { label: 'Upcoming', variant: 'secondary' as const, isGrace: false };
+      case 'ongoing':
+        return { label: 'Ongoing', variant: 'default' as const, isGrace: false };
+      case 'active':
+        return { label: 'Active', variant: 'default' as const, isGrace: false };
+      case 'grace_period':
+        return {
+          label: `${challengeState.daysRemainingInGrace}d grace`,
+          variant: 'outline' as const,
+          isGrace: true,
+          daysRemaining: challengeState.daysRemainingInGrace
+        };
+      case 'archived':
+        return { label: 'Completed', variant: 'outline' as const, isGrace: false };
+      default:
+        return { label: 'Active', variant: 'default' as const, isGrace: false };
     }
   };
 
@@ -165,12 +174,24 @@ export default async function BrowseChallengesPage({
 
           return (
             <Link key={challenge.id} href={`/challenges/${challenge.id}`}>
-              <Card className="relative overflow-hidden h-full transition-shadow hover:shadow-lg">
+              <Card
+                className={cn(
+                  "relative overflow-hidden h-full transition-shadow hover:shadow-lg",
+                  status.isGrace && "border-2 border-amber-400 bg-amber-50/30 dark:bg-amber-950/20"
+                )}
+              >
                 {isCreator && <CreatorRibbon />}
                 <CardHeader className={isCreator ? 'pt-8' : ''}>
                   <div className="flex items-start justify-between gap-2">
                     <CardTitle className="line-clamp-1 flex-1 min-w-0">{challenge.name}</CardTitle>
-                    <Badge variant={status.variant} className="shrink-0">
+                    <Badge
+                      variant={status.variant}
+                      className={cn(
+                        "shrink-0",
+                        status.isGrace && "bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-600 flex items-center gap-1"
+                      )}
+                    >
+                      {status.isGrace && <Clock className="h-3 w-3" />}
                       {status.label}
                     </Badge>
                   </div>

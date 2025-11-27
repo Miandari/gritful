@@ -70,6 +70,8 @@ export const challengeFormSchema = z.object({
   streak_bonus_points: z.number().min(0).default(5),
   enable_perfect_day_bonus: z.boolean().default(false),
   perfect_day_bonus_points: z.number().min(0).default(10),
+  // Grace period: days after end date when entries are still allowed
+  grace_period_days: z.number().min(0).max(14).default(7),
 });
 
 export type ChallengeFormData = z.infer<typeof challengeFormSchema>;

@@ -21,6 +21,7 @@ const step3Schema = z.object({
   streak_bonus_points: z.number().min(0),
   enable_perfect_day_bonus: z.boolean(),
   perfect_day_bonus_points: z.number().min(0),
+  grace_period_days: z.number().min(0).max(14),
 });
 
 type Step3FormData = z.infer<typeof step3Schema>;
@@ -50,6 +51,7 @@ export function Step3Settings({ onNext, onPrev }: Step3SettingsProps) {
       streak_bonus_points: formData.streak_bonus_points ?? 5,
       enable_perfect_day_bonus: formData.enable_perfect_day_bonus ?? false,
       perfect_day_bonus_points: formData.perfect_day_bonus_points ?? 10,
+      grace_period_days: formData.grace_period_days ?? 7,
     },
   });
 
@@ -62,6 +64,7 @@ export function Step3Settings({ onNext, onPrev }: Step3SettingsProps) {
   const watchStreakBonusPoints = watch('streak_bonus_points');
   const watchEnablePerfectDayBonus = watch('enable_perfect_day_bonus');
   const watchPerfectDayBonusPoints = watch('perfect_day_bonus_points');
+  const watchGracePeriodDays = watch('grace_period_days');
 
   const onSubmit = (data: Step3FormData) => {
     updateFormData(data);
@@ -205,6 +208,30 @@ export function Step3Settings({ onNext, onPrev }: Step3SettingsProps) {
               </Label>
               <p className="text-sm text-gray-600">
                 Allow participants to see each other's full progress including task data and notes
+              </p>
+            </div>
+          </div>
+
+          <div className="pt-4 border-t mt-4">
+            <div className="flex-1">
+              <Label htmlFor="grace_period_days" className="font-medium">
+                Grace Period (days)
+              </Label>
+              <p className="text-sm text-gray-600 mb-2">
+                Allow entry logging for this many days after the challenge ends.
+                Challenges in grace period show an amber indicator.
+              </p>
+              <Input
+                id="grace_period_days"
+                type="number"
+                min={0}
+                max={14}
+                value={watchGracePeriodDays}
+                onChange={(e) => setValue('grace_period_days', Number(e.target.value))}
+                className="max-w-[120px]"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                0 = no grace period, max 14 days
               </p>
             </div>
           </div>

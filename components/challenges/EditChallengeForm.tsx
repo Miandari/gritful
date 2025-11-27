@@ -24,6 +24,7 @@ export default function EditChallengeForm({ challenge }: EditChallengeFormProps)
   const [streakBonusPoints, setStreakBonusPoints] = useState(challenge.streak_bonus_points || 5);
   const [enablePerfectDayBonus, setEnablePerfectDayBonus] = useState(challenge.enable_perfect_day_bonus || false);
   const [perfectDayBonusPoints, setPerfectDayBonusPoints] = useState(challenge.perfect_day_bonus_points || 10);
+  const [gracePeriodDays, setGracePeriodDays] = useState(challenge.grace_period_days ?? 7);
 
   const [isSaving, setIsSaving] = useState(false);
   const [isRecalculating, setIsRecalculating] = useState(false);
@@ -64,6 +65,7 @@ export default function EditChallengeForm({ challenge }: EditChallengeFormProps)
         streak_bonus_points: streakBonusPoints,
         enable_perfect_day_bonus: enablePerfectDayBonus,
         perfect_day_bonus_points: perfectDayBonusPoints,
+        grace_period_days: gracePeriodDays,
       });
 
       if (result.success) {
@@ -183,6 +185,34 @@ export default function EditChallengeForm({ challenge }: EditChallengeFormProps)
                 {totalPossiblePoints} pts
               </span>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Grace Period Configuration */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Grace Period</CardTitle>
+          <CardDescription>
+            Allow entry logging after the challenge officially ends
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <Label htmlFor="grace_period_days">Days after end date</Label>
+            <Input
+              id="grace_period_days"
+              type="number"
+              min={0}
+              max={14}
+              value={gracePeriodDays}
+              onChange={(e) => setGracePeriodDays(Number(e.target.value))}
+              className="max-w-[120px]"
+            />
+            <p className="text-sm text-muted-foreground">
+              Participants can still log entries during this period. Set to 0 to disable.
+              Challenges in grace period display an amber border. (Range: 0-14 days)
+            </p>
           </div>
         </CardContent>
       </Card>
