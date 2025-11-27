@@ -7,7 +7,10 @@ import Link from 'next/link';
 import CopyInviteCodeButton from '@/components/challenges/CopyInviteCodeButton';
 import { AddOnetimeTaskButton } from '@/components/challenges/AddOnetimeTaskButton';
 import { DeadlineBadge } from '@/components/daily-entry/DeadlineBadge';
-import { Infinity } from 'lucide-react';
+import { Infinity, Trophy, ChevronRight } from 'lucide-react';
+import { AchievementBadge } from '@/components/achievements/AchievementBadge';
+import { calculateProgress } from '@/lib/achievements/checkAchievements';
+import type { Achievement, AchievementWithProgress, ParticipantStats, AchievementCategory } from '@/lib/achievements/types';
 
 export default async function ChallengeOverviewPage({
   params
@@ -93,6 +96,61 @@ export default async function ChallengeOverviewPage({
     }
   }
 
+  // Fetch achievements for participants
+  let achievementsWithProgress: AchievementWithProgress[] = [];
+  let earnedCount = 0;
+  let totalAchievements = 0;
+
+  if (isParticipant && myParticipation) {
+    // Get all achievements for this challenge
+    const { data: achievements } = await supabase.rpc('get_challenge_achievements', {
+      p_challenge_id: id,
+    });
+
+    // Get participant's earned achievements
+    const { data: earnedRecords } = await supabase
+      .from('participant_achievements')
+      .select('achievement_id, earned_at')
+      .eq('participant_id', myParticipation.id);
+
+    const earnedMap = new Map(
+      (earnedRecords || []).map((e: any) => [e.achievement_id, e.earned_at])
+    );
+
+    // Build participant stats for progress calculation
+    const participantStats: ParticipantStats = {
+      currentStreak: myStats.currentStreak,
+      longestStreak: myStats.longestStreak,
+      totalPoints: myStats.totalPoints,
+      entriesCount: myEntries.length,
+      perfectDays: myEntries.filter((e: any) => e.is_completed && (e.bonus_points || 0) > 0).length,
+      completionRate: myStats.completionRate,
+      earlyEntries: 0, // Would need submitted_at to calculate
+      lateEntries: 0,
+      challengeComplete: myParticipation.status === 'completed',
+    };
+
+    // Build achievements with progress
+    achievementsWithProgress = (achievements || []).map((achievement: Achievement) => {
+      const earned = earnedMap.has(achievement.id);
+      const earned_at = earnedMap.get(achievement.id);
+      const progress = !earned ? calculateProgress(achievement, participantStats) : undefined;
+
+      return {
+        ...achievement,
+        earned,
+        earned_at,
+        progress,
+      };
+    });
+
+    // Sort by display_order
+    achievementsWithProgress.sort((a, b) => a.display_order - b.display_order);
+
+    earnedCount = achievementsWithProgress.filter(a => a.earned).length;
+    totalAchievements = achievementsWithProgress.length;
+  }
+
   // Get creator profile separately
   const { data: creatorProfile } = await supabase
     .from('profiles')
@@ -166,6 +224,57 @@ export default async function ChallengeOverviewPage({
               </Card>
             )}
           </div>
+
+          {/* Achievements Preview */}
+          {totalAchievements > 0 && (
+            <Card className="mt-4">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Trophy className="h-5 w-5 text-yellow-500" />
+                    <CardTitle className="text-base">Achievements</CardTitle>
+                  </div>
+                  <Link
+                    href={`/challenges/${id}/achievements`}
+                    className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+                  >
+                    View all
+                    <ChevronRight className="h-4 w-4" />
+                  </Link>
+                </div>
+                <CardDescription>
+                  {earnedCount} of {totalAchievements} earned
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-3">
+                  {/* Show earned achievements first, then in-progress, limit to 8 */}
+                  {achievementsWithProgress
+                    .filter(a => a.earned || (a.progress && a.progress.current > 0))
+                    .slice(0, 8)
+                    .map((achievement) => (
+                      <AchievementBadge
+                        key={achievement.id}
+                        name={achievement.name}
+                        description={achievement.description}
+                        icon={achievement.icon}
+                        category={achievement.category as AchievementCategory}
+                        earned={achievement.earned}
+                        progress={achievement.progress}
+                        size="sm"
+                        showName={false}
+                      />
+                    ))}
+                  {/* Show placeholder for remaining if less than 8 visible */}
+                  {achievementsWithProgress.filter(a => a.earned || (a.progress && a.progress.current > 0)).length === 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      Complete tasks to earn achievements!
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 

@@ -6,7 +6,7 @@ export interface ActivityFeedItem {
   id: string;
   challenge_id: string;
   user_id: string;
-  activity_type: 'entry_log' | 'social_post' | 'streak_milestone' | 'join_challenge';
+  activity_type: 'entry_log' | 'social_post' | 'streak_milestone' | 'join_challenge' | 'achievement_earned';
   reference_type: string | null;
   reference_id: string | null;
   message: string | null;

@@ -5,6 +5,8 @@ import { revalidatePath } from 'next/cache';
 import { format } from 'date-fns';
 import { calculateEntryScore } from '@/lib/utils/scoring';
 import { getTodayDateString } from '@/lib/utils/dates';
+import { checkAndAwardAchievements } from '@/lib/achievements/checkAchievements';
+import type { EarnedAchievement } from '@/lib/achievements/types';
 
 interface SaveEntryData {
   participantId: string;
@@ -130,12 +132,25 @@ export async function saveDailyEntry(data: SaveEntryData) {
     // Update participant's total points
     await updateTotalPoints(participation.id);
 
+    // Check and award achievements
+    let newAchievements: EarnedAchievement[] = [];
+    try {
+      newAchievements = await checkAndAwardAchievements(
+        participation.id,
+        participation.challenge_id
+      );
+    } catch (achievementError) {
+      // Log but don't fail the entry save
+      console.error('Error checking achievements:', achievementError);
+    }
+
     revalidatePath('/dashboard/today');
     revalidatePath('/dashboard');
     revalidatePath(`/challenges/${participation.challenge_id}`);
     revalidatePath(`/challenges/${participation.challenge_id}/progress`);
+    revalidatePath(`/challenges/${participation.challenge_id}/achievements`);
 
-    return { success: true };
+    return { success: true, newAchievements };
   } catch (error) {
     console.error('Error saving daily entry:', error);
     if (error instanceof Error) {

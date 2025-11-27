@@ -5,6 +5,7 @@ import { type ActivityFeedItem, getActivityFeed } from '@/app/actions/activityFe
 import { EntryLogCard } from './cards/EntryLogCard';
 import { SocialPostCard } from './cards/SocialPostCard';
 import { MilestoneCard } from './cards/MilestoneCard';
+import { AchievementCard } from './cards/AchievementCard';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 
@@ -87,6 +88,15 @@ export function ActivityFeed({
       case 'join_challenge':
         return (
           <SocialPostCard
+            key={key}
+            activity={activity}
+            currentUserId={currentUserId}
+          />
+        );
+
+      case 'achievement_earned':
+        return (
+          <AchievementCard
             key={key}
             activity={activity}
             currentUserId={currentUserId}

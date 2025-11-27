@@ -15,6 +15,8 @@ import { useRouter } from 'next/navigation';
 import { FileUpload } from '@/components/ui/file-upload';
 import { OnetimeTasksSection } from './OnetimeTasksSection';
 import { PeriodicTasksSection } from './PeriodicTasksSection';
+import { AchievementQueue } from '@/components/achievements/AchievementPopup';
+import type { EarnedAchievement } from '@/lib/achievements/types';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -94,6 +96,7 @@ export default function DailyEntryForm({
   const [formData, setFormData] = useState<Record<string, any>>(
     existingEntry?.metric_data || {}
   );
+  const [newAchievements, setNewAchievements] = useState<EarnedAchievement[]>([]);
 
   // Filter metrics into daily, weekly, monthly, and one-time tasks, respecting date ranges
   const { dailyTasks, weeklyTasks, monthlyTasks, onetimeTasks } = useMemo(() => {
@@ -197,6 +200,11 @@ export default function DailyEntryForm({
 
       if (!result.success) {
         throw new Error(result.error || 'Failed to save entry');
+      }
+
+      // Show achievement popup if any new achievements were earned
+      if (result.newAchievements && result.newAchievements.length > 0) {
+        setNewAchievements(result.newAchievements);
       }
 
       router.refresh();
@@ -439,6 +447,12 @@ export default function DailyEntryForm({
 
   return (
     <div className="space-y-8">
+      {/* Achievement Popup */}
+      <AchievementQueue
+        achievements={newAchievements}
+        onComplete={() => setNewAchievements([])}
+      />
+
       {/* Daily Tasks Section */}
       {dailyTasks.length > 0 && (
         <form onSubmit={handleSubmit} className="space-y-6">

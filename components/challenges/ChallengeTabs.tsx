@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from 'next/navigation'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { BarChart3, Users, Calendar, MessageSquare, Activity } from 'lucide-react'
+import { BarChart3, Calendar, MessageSquare, Activity, Trophy } from 'lucide-react'
 
 interface ChallengeTabsProps {
   challengeId: string
@@ -14,7 +14,7 @@ interface ChallengeTabsProps {
   children?: React.ReactNode
 }
 
-type TabValue = 'overview' | 'progress' | 'participants' | 'feed' | 'updates' | 'entries'
+type TabValue = 'overview' | 'progress' | 'feed' | 'updates' | 'entries' | 'achievements'
 
 export function ChallengeTabs({
   challengeId,
@@ -30,10 +30,10 @@ export function ChallengeTabs({
   // Determine active tab from pathname
   const getActiveTab = (): TabValue => {
     if (pathname.includes('/progress')) return 'progress'
-    if (pathname.includes('/participants')) return 'participants'
     if (pathname.includes('/feed')) return 'feed'
     if (pathname.includes('/updates')) return 'updates'
     if (pathname.includes('/entries')) return 'entries'
+    if (pathname.includes('/achievements')) return 'achievements'
     return 'overview'
   }
 
@@ -49,9 +49,6 @@ export function ChallengeTabs({
       case 'progress':
         router.push(`${baseUrl}/progress`)
         break
-      case 'participants':
-        router.push(`${baseUrl}/participants`)
-        break
       case 'feed':
         router.push(`${baseUrl}/feed`)
         break
@@ -61,12 +58,20 @@ export function ChallengeTabs({
       case 'entries':
         router.push(`${baseUrl}/entries`)
         break
+      case 'achievements':
+        router.push(`${baseUrl}/achievements`)
+        break
     }
   }
 
+  // Calculate grid columns based on visible tabs
+  // Participants: overview, progress, feed, updates, entries, achievements = 6
+  // Non-participants: overview, feed, updates = 3
+  const gridCols = isParticipant ? 'grid-cols-6' : 'grid-cols-3'
+
   return (
     <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-      <TabsList className="grid w-full grid-cols-6 h-auto">
+      <TabsList className={`grid w-full ${gridCols} h-auto`}>
         <TabsTrigger value="overview" className="flex-col sm:flex-row gap-1 px-2 py-2">
           <BarChart3 className="h-4 w-4 sm:mr-2" />
           <div className="flex items-center gap-1">
@@ -82,19 +87,6 @@ export function ChallengeTabs({
             </div>
           </TabsTrigger>
         )}
-
-        <TabsTrigger value="participants" className="flex-col sm:flex-row gap-1 px-2 py-2">
-          <Users className="h-4 w-4 sm:mr-2" />
-          <div className="flex items-center gap-1">
-            <span className="text-xs sm:text-sm hidden sm:inline">Participants</span>
-            <span className="text-xs sm:hidden">People</span>
-            {participantCount > 0 && (
-              <Badge variant="secondary" className="text-xs">
-                {participantCount}
-              </Badge>
-            )}
-          </div>
-        </TabsTrigger>
 
         <TabsTrigger value="feed" className="flex-col sm:flex-row gap-1 px-2 py-2 relative">
           <Activity className="h-4 w-4 sm:mr-2" />
@@ -125,6 +117,16 @@ export function ChallengeTabs({
             <Calendar className="h-4 w-4 sm:mr-2" />
             <div className="flex items-center gap-1">
               <span className="text-xs sm:text-sm">Entries</span>
+            </div>
+          </TabsTrigger>
+        )}
+
+        {isParticipant && (
+          <TabsTrigger value="achievements" className="flex-col sm:flex-row gap-1 px-2 py-2">
+            <Trophy className="h-4 w-4 sm:mr-2" />
+            <div className="flex items-center gap-1">
+              <span className="text-xs sm:text-sm hidden sm:inline">Achievements</span>
+              <span className="text-xs sm:hidden">Badges</span>
             </div>
           </TabsTrigger>
         )}

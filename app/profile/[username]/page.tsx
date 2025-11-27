@@ -3,9 +3,11 @@ import { createClient } from '@/lib/supabase/server';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, Trophy, Target, MapPin, Globe, Twitter, Github, Instagram } from 'lucide-react';
+import { Calendar, Trophy, Target, MapPin, Globe, Twitter, Github, Instagram, Award } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
+import { CompactAchievementGrid } from '@/components/achievements/AchievementGrid';
+import type { AchievementWithProgress, AchievementCategory } from '@/lib/achievements/types';
 
 export default async function PublicProfilePage({
   params
@@ -101,6 +103,43 @@ export default async function PublicProfilePage({
   const activeChallenges = allParticipations?.length || 0;
   const challengesCreated = allCreatedChallenges?.length || 0;
   const longestStreak = allParticipations?.reduce((max, p) => Math.max(max, p.longest_streak || 0), 0) || 0;
+
+  // Fetch user's recent achievements (across all challenges)
+  const { data: recentAchievements } = await supabase.rpc('get_user_recent_achievements', {
+    p_user_id: profile.id,
+    p_limit: 10,
+  });
+
+  // Get total achievement count
+  const { data: achievementCount } = await supabase.rpc('get_user_achievement_count', {
+    p_user_id: profile.id,
+  });
+
+  // Transform to AchievementWithProgress format
+  const achievementsForDisplay: AchievementWithProgress[] = (recentAchievements || []).map((a: {
+    achievement_id: string;
+    name: string;
+    description: string;
+    icon: string;
+    category: string;
+    earned_at: string;
+    challenge_name: string;
+  }) => ({
+    id: a.achievement_id,
+    challenge_id: null,
+    name: a.name,
+    description: a.description,
+    icon: a.icon,
+    category: a.category as AchievementCategory,
+    trigger_type: 'streak_days' as const,
+    trigger_value: 0,
+    is_hidden: false,
+    display_order: 0,
+    created_at: '',
+    earned: true,
+    earned_at: a.earned_at,
+    challenge_name: a.challenge_name,
+  }));
 
   return (
     <div className="min-h-screen bg-background">
@@ -201,7 +240,7 @@ export default async function PublicProfilePage({
         </Card>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">
           <Card>
             <CardContent className="p-4 text-center">
               <div className="flex items-center justify-center mb-2">
@@ -232,6 +271,15 @@ export default async function PublicProfilePage({
           <Card>
             <CardContent className="p-4 text-center">
               <div className="flex items-center justify-center mb-2">
+                <Award className="h-5 w-5 text-orange-500" />
+              </div>
+              <div className="text-2xl font-bold">{achievementCount || 0}</div>
+              <div className="text-xs text-muted-foreground">Badges</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <div className="flex items-center justify-center mb-2">
                 <Trophy className="h-5 w-5 text-purple-500" />
               </div>
               <div className="text-2xl font-bold">{challengesCreated}</div>
@@ -239,6 +287,28 @@ export default async function PublicProfilePage({
             </CardContent>
           </Card>
         </div>
+
+        {/* Recent Achievements */}
+        {achievementsForDisplay.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Award className="h-5 w-5" />
+                Recent Achievements
+              </CardTitle>
+              <CardDescription>
+                {achievementCount || 0} total badges earned across all challenges
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CompactAchievementGrid
+                achievements={achievementsForDisplay}
+                maxDisplay={8}
+                size="md"
+              />
+            </CardContent>
+          </Card>
+        )}
 
         {/* Active Challenges */}
         {publicParticipations && publicParticipations.length > 0 && (
