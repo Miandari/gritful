@@ -11,6 +11,7 @@ interface UpdateChallengeData {
   enable_perfect_day_bonus: boolean;
   perfect_day_bonus_points: number;
   grace_period_days?: number;
+  ends_at?: string | null; // ISO date string (YYYY-MM-DD) or null for ongoing
 }
 
 export async function updateChallengeSettings(data: UpdateChallengeData) {
@@ -25,10 +26,10 @@ export async function updateChallengeSettings(data: UpdateChallengeData) {
   }
 
   try {
-    // Verify user is the challenge creator
+    // Verify user is the challenge creator and get challenge details
     const { data: challenge } = await supabase
       .from('challenges')
-      .select('creator_id')
+      .select('creator_id, starts_at, ends_at, ended_at, grace_period_days')
       .eq('id', data.challengeId)
       .single() as any;
 
@@ -38,6 +39,43 @@ export async function updateChallengeSettings(data: UpdateChallengeData) {
 
     if (challenge.creator_id !== user.id) {
       return { success: false, error: 'Only the challenge creator can update settings' };
+    }
+
+    // Validate ends_at changes if provided
+    if (data.ends_at !== undefined) {
+      // Check if challenge is active (not ended or in grace period)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const hasEnded = challenge.ends_at !== null || challenge.ended_at !== null;
+      if (hasEnded) {
+        const effectiveEndDateStr = challenge.ended_at
+          ? challenge.ended_at.split('T')[0]
+          : challenge.ends_at;
+        const endDate = new Date(effectiveEndDateStr);
+        endDate.setHours(0, 0, 0, 0);
+
+        // If end date is in the past, challenge has ended
+        if (endDate < today) {
+          return { success: false, error: 'Cannot modify duration of an ended challenge' };
+        }
+      }
+
+      // If setting a new end date (not null), validate it
+      if (data.ends_at !== null) {
+        const newEndDate = new Date(data.ends_at);
+        newEndDate.setHours(0, 0, 0, 0);
+        const startDate = new Date(challenge.starts_at);
+        startDate.setHours(0, 0, 0, 0);
+
+        if (newEndDate < today) {
+          return { success: false, error: 'End date cannot be in the past' };
+        }
+
+        if (newEndDate <= startDate) {
+          return { success: false, error: 'End date must be after start date' };
+        }
+      }
     }
 
     // Update the challenge
@@ -52,6 +90,23 @@ export async function updateChallengeSettings(data: UpdateChallengeData) {
     // Only update grace_period_days if provided
     if (data.grace_period_days !== undefined) {
       updateData.grace_period_days = data.grace_period_days;
+    }
+
+    // Update ends_at and duration_days if provided
+    if (data.ends_at !== undefined) {
+      updateData.ends_at = data.ends_at;
+
+      if (data.ends_at === null) {
+        // Converting to ongoing challenge
+        updateData.duration_days = null;
+      } else {
+        // Calculate duration_days from starts_at to new ends_at
+        const startDate = new Date(challenge.starts_at);
+        const endDate = new Date(data.ends_at);
+        const diffTime = endDate.getTime() - startDate.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        updateData.duration_days = diffDays;
+      }
     }
 
     const { error } = await supabase

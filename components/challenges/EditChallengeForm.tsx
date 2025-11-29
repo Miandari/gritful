@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,10 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Calendar } from 'lucide-react';
 import { recalculateAllPoints } from '@/app/actions/recalculatePoints';
 import { updateChallengeSettings } from '@/app/actions/updateChallenge';
 import { MetricFormData } from '@/lib/validations/challenge';
+import { getChallengeState } from '@/lib/utils/challengeState';
 
 interface EditChallengeFormProps {
   challenge: any;
@@ -26,11 +27,39 @@ export default function EditChallengeForm({ challenge }: EditChallengeFormProps)
   const [perfectDayBonusPoints, setPerfectDayBonusPoints] = useState(challenge.perfect_day_bonus_points || 10);
   const [gracePeriodDays, setGracePeriodDays] = useState(challenge.grace_period_days ?? 7);
 
+  // Duration state
+  const [isOngoing, setIsOngoing] = useState(challenge.ends_at === null);
+  const [endsAt, setEndsAt] = useState(challenge.ends_at || '');
+
   const [isSaving, setIsSaving] = useState(false);
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
   const [recalculateMessage, setRecalculateMessage] = useState('');
   const [error, setError] = useState('');
+
+  // Determine if duration can be modified
+  const challengeState = useMemo(() => {
+    return getChallengeState({
+      starts_at: challenge.starts_at,
+      ends_at: challenge.ends_at,
+      grace_period_days: challenge.grace_period_days,
+      ended_at: challenge.ended_at,
+    });
+  }, [challenge.starts_at, challenge.ends_at, challenge.grace_period_days, challenge.ended_at]);
+
+  const canModifyDuration = challengeState.state === 'active' || challengeState.state === 'ongoing' || challengeState.state === 'upcoming';
+
+  // Calculate duration in days
+  const calculatedDuration = useMemo(() => {
+    if (isOngoing || !endsAt) return null;
+    const start = new Date(challenge.starts_at);
+    const end = new Date(endsAt);
+    const diffTime = end.getTime() - start.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  }, [challenge.starts_at, endsAt, isOngoing]);
+
+  // Get today's date for min value
+  const today = new Date().toISOString().split('T')[0];
 
   const totalPossiblePoints = metrics.reduce((sum, m) => sum + (m.points || 1), 0);
 
@@ -58,7 +87,17 @@ export default function EditChallengeForm({ challenge }: EditChallengeFormProps)
     setSaveMessage('');
 
     try {
-      const result = await updateChallengeSettings({
+      // Build update data
+      const updateData: {
+        challengeId: string;
+        metrics: MetricFormData[];
+        enable_streak_bonus: boolean;
+        streak_bonus_points: number;
+        enable_perfect_day_bonus: boolean;
+        perfect_day_bonus_points: number;
+        grace_period_days: number;
+        ends_at?: string | null;
+      } = {
         challengeId: challenge.id,
         metrics,
         enable_streak_bonus: enableStreakBonus,
@@ -66,7 +105,19 @@ export default function EditChallengeForm({ challenge }: EditChallengeFormProps)
         enable_perfect_day_bonus: enablePerfectDayBonus,
         perfect_day_bonus_points: perfectDayBonusPoints,
         grace_period_days: gracePeriodDays,
-      });
+      };
+
+      // Include ends_at only if duration can be modified and value changed
+      if (canModifyDuration) {
+        const originalIsOngoing = challenge.ends_at === null;
+        const originalEndsAt = challenge.ends_at || '';
+
+        if (isOngoing !== originalIsOngoing || endsAt !== originalEndsAt) {
+          updateData.ends_at = isOngoing ? null : endsAt;
+        }
+      }
+
+      const result = await updateChallengeSettings(updateData);
 
       if (result.success) {
         setSaveMessage('Settings saved successfully!');
@@ -106,6 +157,109 @@ export default function EditChallengeForm({ challenge }: EditChallengeFormProps)
 
   return (
     <div className="space-y-6">
+      {/* Challenge Duration */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Challenge Duration
+          </CardTitle>
+          <CardDescription>
+            {canModifyDuration
+              ? 'Modify the end date or convert between timed and ongoing'
+              : 'This challenge has ended and duration cannot be modified'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {/* Start date (read-only) */}
+            <div>
+              <Label className="text-muted-foreground">Start Date</Label>
+              <p className="font-medium">
+                {new Date(challenge.starts_at).toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+              </p>
+            </div>
+
+            {canModifyDuration ? (
+              <>
+                {/* Ongoing toggle */}
+                <div className="flex items-start space-x-3">
+                  <input
+                    type="checkbox"
+                    id="is_ongoing"
+                    checked={isOngoing}
+                    onChange={(e) => {
+                      setIsOngoing(e.target.checked);
+                      if (e.target.checked) {
+                        setEndsAt('');
+                      }
+                    }}
+                    className="mt-1"
+                  />
+                  <div className="flex-1">
+                    <Label htmlFor="is_ongoing" className="font-medium cursor-pointer">
+                      Ongoing challenge (no end date)
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      The challenge will continue indefinitely until you manually end it
+                    </p>
+                  </div>
+                </div>
+
+                {/* End date picker (only shown when not ongoing) */}
+                {!isOngoing && (
+                  <div className="space-y-2">
+                    <Label htmlFor="ends_at">End Date</Label>
+                    <Input
+                      id="ends_at"
+                      type="date"
+                      value={endsAt}
+                      min={today}
+                      onChange={(e) => setEndsAt(e.target.value)}
+                      className="max-w-[200px]"
+                    />
+                    {calculatedDuration !== null && calculatedDuration > 0 && (
+                      <p className="text-sm text-muted-foreground">
+                        Duration: {calculatedDuration} day{calculatedDuration !== 1 ? 's' : ''}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                {/* Read-only display for ended challenges */}
+                <div>
+                  <Label className="text-muted-foreground">End Date</Label>
+                  <p className="font-medium">
+                    {challenge.ends_at
+                      ? new Date(challenge.ends_at).toLocaleDateString('en-US', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })
+                      : 'No end date (was ongoing)'}
+                  </p>
+                </div>
+                <Alert>
+                  <AlertDescription>
+                    {challengeState.state === 'grace_period'
+                      ? 'This challenge is in its grace period. Duration cannot be modified after the challenge has ended.'
+                      : 'This challenge has ended. Duration cannot be modified.'}
+                  </AlertDescription>
+                </Alert>
+              </>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Tasks Configuration */}
       <Card>
         <CardHeader>
