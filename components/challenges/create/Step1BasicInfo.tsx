@@ -17,17 +17,7 @@ const step1Schema = z.object({
   description: z.string().max(500).optional(),
   duration_days: z.number().min(1).max(365).nullable(),
   is_ongoing: z.boolean().default(false),
-  starts_at: z.string().refine((date) => {
-    // Parse the date string (YYYY-MM-DD) into components
-    const [year, month, day] = date.split('-').map(Number);
-    const startDate = new Date(year, month - 1, day, 0, 0, 0, 0);
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    // Allow today or future dates
-    return startDate.getTime() >= today.getTime();
-  }, 'Start date cannot be before today'),
+  starts_at: z.string().min(1, 'Start date is required'),
 }).refine((data) => {
   // Either ongoing or has a valid duration
   return data.is_ongoing || (data.duration_days !== null && data.duration_days > 0);
@@ -164,11 +154,15 @@ export function Step1BasicInfo({ onNext, onBackToTemplates }: Step1BasicInfoProp
             id="starts_at"
             type="date"
             {...register('starts_at')}
-            min={format(new Date(), 'yyyy-MM-dd')}
             className="mt-1"
           />
           {errors.starts_at && (
             <p className="mt-1 text-sm text-red-600">{errors.starts_at.message}</p>
+          )}
+          {watchStartDate && new Date(watchStartDate) < new Date(format(new Date(), 'yyyy-MM-dd')) && (
+            <p className="mt-1 text-sm text-muted-foreground">
+              Starting in the past? You can backfill entries for previous days.
+            </p>
           )}
         </div>
       </div>

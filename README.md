@@ -1,319 +1,188 @@
-# Gritful - Daily Challenge Tracker
+# Gritful
 
-A web application for tracking habits and challenges through daily check-ins and metrics. Built as a full-stack application demonstrating modern web development practices with Next.js, TypeScript, and Supabase.
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+[![Deploy with Vercel](https://img.shields.io/badge/Vercel-Deployed-black?logo=vercel)](https://www.gritful.app)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)](https://www.typescriptlang.org/)
 
-## What This Project Does
+**Multiplayer habit tracking.**
 
-Gritful is a habit tracking application that helps users maintain consistency in their personal goals. Users can create challenges with custom metrics, log daily progress, and view their completion history through calendars and streak counters.
+Gritful turns personal goals into competitive challenges. Track anything—workouts, reading, meditation, learning—and compete with friends through points, achievements, and leaderboards. While most habit apps are solo tools where motivation fades, Gritful builds accountability into the experience. Flexible scoring rewards progress over perfection, so you're competing to improve, not to be perfect.
 
-The application demonstrates several key technical implementations:
-- Flexible metric system supporting multiple data types
-- Row-level security for multi-tenant data isolation
-- Real-time file uploads with image optimization
-- Complex database relationships with proper normalization
-- Server-side rendering and server actions in Next.js
+![Gritful Leaderboard](./public/images/leaderboard.png)
 
-## Why Use This Application
+**[Live Demo](https://www.gritful.app)**
 
-**For End Users:**
-- Track any type of goal with customizable metrics (workouts, reading, meditation, etc.)
-- See progress through visual calendars and streak tracking
-- Share challenges with friends or keep them private
-- Upload photos to document progress
+---
 
-**For Developers:**
-- Reference implementation of Next.js 15 with App Router
-- Example of Supabase integration with proper RLS policies
-- Pattern for handling complex form validation and multi-step workflows
-- Demonstration of file upload with optimization
-- Implementation of authentication and authorization
+## Highlights
 
-## Problem Being Solved
+- **Flexible task system** — Daily, weekly, monthly, or one-time tasks
+- **Points-based scoring** — Binary, scaled, or tiered modes to reward progress
+- **Achievements** — 14 unlockable badges across streak, points, and consistency categories
+- **Activity feed** — See what your friends are accomplishing with reactions
+- **Leaderboards** — Compete with participants in real-time
+- **Challenge templates** — 8 pre-built templates for quick setup
+- **Public profiles** — Share your stats and challenge history
+- **Email notifications** — Stay updated on challenge activity
+- **Dark/light mode** — Full theme support
 
-Many people struggle to maintain consistency when working toward personal goals. Generic todo lists lack the structure and motivation needed for habit formation. This application provides:
-
-1. Structured tracking through defined challenges and metrics
-2. Visual feedback through streaks and calendars
-3. Accountability through shared challenges
-4. Flexibility to track any type of measurable goal
-
-### What Makes Gritful Different
-
-Unlike simple habit trackers, Gritful offers:
-
-**Flexible Metric System**: Define exactly what success looks like for your challenge. Track binary yes/no completions, specific numbers (steps, minutes, calories), time durations, multiple choice selections, written reflections, or visual progress through photo uploads.
-
-**Accountability Through Sharing**: Create public challenges that others can join, or use private invite codes for accountability groups. See your progress alongside others working toward similar goals.
-
-**Visual Progress Tracking**: Calendar views show your consistency at a glance, with completed days, missed days, and upcoming entries clearly marked. Streak counters provide immediate feedback on your momentum.
-
-**Smart Data Management**: All entries are securely stored with row-level security. Your data remains private unless you explicitly choose to share challenges publicly. Export capabilities allow you to own your progress data.
-
-### Core Use Cases
-
-- **Fitness Goals**: Track workouts, nutrition, sleep, or weight with customizable metrics
-- **Learning & Development**: Monitor study time, practice sessions, or skill-building activities
-- **Wellness Habits**: Log meditation, journaling, hydration, or mental health check-ins
-- **Creative Projects**: Track daily writing, art creation, or music practice
-- **Productivity**: Monitor deep work sessions, task completion, or time management
-- **Social Accountability**: Join existing challenges or create group challenges for teams
-
-### Technical Implementation
-
-Built with Next.js, Supabase, and TypeScript.
+---
 
 ## Features
 
-### Authentication & User Management
-- Secure user authentication with email/password
-- OAuth integration with Google (configurable)
-- User profile management with avatars and bio
-- Password reset and account recovery
+### Challenges
 
-### Challenge Creation & Management
-- Multi-step challenge creation wizard
-- Six metric types: boolean, number, duration, choice, text, and file upload
-- Configurable validation rules (min/max values, required fields, character limits)
-- Public challenges discoverable by all users
-- Private challenges with shareable invite codes
-- Challenge editing and deletion capabilities
-- Automatic creator participation
+- Create public challenges anyone can join or private challenges with invite codes
+- Set challenge duration or create ongoing challenges with no end date
+- Configure grace periods for flexibility after challenges end
+- Use templates or build custom challenges from scratch
 
-### Daily Progress Tracking
-- Dynamic form generation based on challenge metrics
-- Support for all metric types with appropriate input controls
-- Photo uploads with automatic image optimization
-- Entry locking to prevent retrospective editing (optional)
-- Notes field for additional context on each entry
-- Validation of required fields before submission
+### Task Tracking
 
-### Progress Visualization
-- Calendar view showing daily completion status
-- Visual indicators for completed, missed, and upcoming days
-- Current streak counter with milestone achievements
-- Longest streak tracking for personal bests
-- Completion rate statistics
-- Progress timeline showing days remaining
+- Six task types: boolean, number, duration, choice, text, and file upload
+- Configurable validation (min/max values, required fields)
+- Calendar view showing completion status
+- Photo uploads with automatic optimization
 
-### Social Features
-- Browse public challenges
-- Search and filter challenges
-- Join challenges with one click
-- View participant counts
-- Leave challenges at any time
-- Private challenge sharing via invite codes
+### Scoring & Gamification
 
-### Data Security
-- Row-level security on all database operations
-- User data isolation
-- Secure file storage with access controls
-- Input validation and sanitization
-- Protected API routes
+- **Binary scoring** — Full points if threshold met
+- **Scaled scoring** — Proportional points based on progress
+- **Tiered scoring** — Different point values for achievement levels
+- Streak bonuses and perfect day rewards
+- Achievement system with automatic unlock notifications
 
-## Tech Stack
+### Social
 
-- **Frontend**: Next.js 16 (App Router), React 19, TypeScript
-- **Styling**: Tailwind CSS v4, shadcn/ui components
-- **Backend**: Supabase (PostgreSQL, Authentication, Storage)
-- **State Management**: Zustand, TanStack Query
-- **Forms**: React Hook Form with Zod validation
-- **Deployment**: Vercel (recommended)
+- Browse and join public challenges
+- Activity feed with reactions
+- Public profiles with aggregate stats
+- Participant leaderboards with points and streaks
 
-## Getting Started
+---
+
+## Quick Start
 
 ### Prerequisites
 
-- Node.js 20+ and npm
-- A Supabase account (https://supabase.com)
+- Node.js 20+
+- A [Supabase](https://supabase.com) account
 
 ### Installation
 
-1. **Clone the repository**
-   ```bash
-   git clone <your-repo-url>
-   cd gritful
-   ```
+```bash
+# Clone the repository
+git clone https://github.com/Miandari/gritful.git
+cd gritful
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+# Install dependencies
+npm install
 
-3. **Set up Supabase**
+# Set up environment variables
+cp .env.local.example .env.local
+# Edit .env.local with your Supabase credentials
 
-   Follow the instructions in `/supabase/README.md`:
-   - Create a new Supabase project
-   - Run the migrations from `/supabase/migrations/`
-   - Get your project credentials
+# Run the development server
+npm run dev
+```
 
-4. **Configure environment variables**
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-   Copy `.env.local.example` to `.env.local`:
-   ```bash
-   cp .env.local.example .env.local
-   ```
+### Environment Variables
 
-   Fill in your Supabase credentials:
-   ```env
-   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-   NEXT_PUBLIC_APP_URL=http://localhost:3000
-   ```
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
 
-5. **Run the development server**
-   ```bash
-   npm run dev
-   ```
+---
 
-   Open [http://localhost:3000](http://localhost:3000) in your browser.
+## Tech Stack
+
+| Category | Technology |
+|----------|------------|
+| Framework | Next.js 16 (App Router) |
+| Language | TypeScript |
+| Database | Supabase (PostgreSQL) |
+| Auth | Supabase Auth |
+| Storage | Supabase Storage |
+| Styling | Tailwind CSS v4 + shadcn/ui |
+| State | Zustand + TanStack Query |
+| Forms | React Hook Form + Zod |
+
+---
 
 ## Project Structure
 
 ```
 gritful/
-├── app/                      # Next.js App Router pages
-│   ├── (auth)/              # Auth pages (login, signup)
-│   ├── dashboard/           # Dashboard and user pages
-│   ├── challenges/          # Challenge pages
-│   ├── actions/             # Server actions
-│   └── layout.tsx           # Root layout
-├── components/              # React components
-│   ├── ui/                  # shadcn/ui components
-│   ├── auth/                # Auth-related components
-│   ├── challenges/          # Challenge components
-│   ├── tracking/            # Progress tracking components
-│   └── layout/              # Layout components
-├── lib/                     # Utility libraries
-│   ├── supabase/            # Supabase client configuration
-│   ├── hooks/               # Custom React hooks
-│   ├── stores/              # Zustand stores
-│   ├── types/               # TypeScript type definitions
-│   └── utils/               # Utility functions
-├── supabase/                # Supabase configuration
-│   ├── migrations/          # Database migrations
-│   └── functions/           # Edge functions
-└── public/                  # Static assets
+├── app/
+│   ├── (auth)/                 # Login, signup pages
+│   ├── dashboard/              # Dashboard, today, my challenges
+│   ├── challenges/
+│   │   ├── [id]/
+│   │   │   └── (tabs)/         # Challenge tabs (entries, progress, achievements, feed, updates)
+│   │   ├── browse/             # Public challenge discovery
+│   │   └── create/             # Challenge creation wizard
+│   ├── profile/[username]/     # Public profiles
+│   └── actions/                # Server actions
+├── components/
+│   ├── ui/                     # shadcn/ui components
+│   ├── challenges/             # Challenge-related components
+│   └── progress/               # Progress tracking components
+├── lib/
+│   ├── supabase/               # Supabase client config
+│   ├── stores/                 # Zustand stores
+│   ├── templates/              # Challenge templates
+│   └── utils/                  # Utility functions (scoring, etc.)
+└── supabase/
+    ├── migrations/             # Database migrations
+    └── functions/              # Edge functions
 ```
 
-## Development Workflow
+---
 
-### Available Scripts
+## Scripts
 
 ```bash
 npm run dev          # Start development server
 npm run build        # Build for production
 npm run start        # Start production server
 npm run lint         # Run ESLint
-npm run lint:fix     # Fix ESLint errors
-npm run format       # Format code with Prettier
-npm run type-check   # Run TypeScript type checking
+npm run type-check   # TypeScript type checking
+npm run format       # Format with Prettier
 ```
 
-### Code Style
-
-This project uses:
-- ESLint for code linting
-- Prettier for code formatting (with Tailwind CSS plugin)
-- TypeScript for type safety
-
-Run `npm run format` before committing to ensure consistent code style.
-
-## Database Schema
-
-The application uses the following main tables:
-
-- `profiles` - User profiles extending Supabase auth.users
-- `challenges` - Challenge definitions with metrics
-- `challenge_participants` - Users participating in challenges
-- `daily_entries` - Daily tracking entries
-- `user_storage_usage` - File upload quota tracking
-- `notification_preferences` - User notification settings
-
-See `/supabase/migrations/` for the complete schema.
-
-## Implementation Status
-
-### Core Features (Completed)
-- Next.js 15 project setup with TypeScript and Tailwind CSS
-- Supabase integration for backend services
-- Authentication system with email/password and OAuth
-- PostgreSQL database schema with comprehensive migrations
-- Row Level Security policies for data protection
-- Responsive dashboard layout and navigation
-- shadcn/ui component library integration
-- Challenge creation wizard with metric builder
-- Public and private challenge discovery
-- Complete daily entry system supporting all metric types
-- Calendar-based progress visualization
-- Streak tracking and statistics
-- File upload with automatic image optimization
-- Challenge management (delete, leave)
-- Dedicated progress dashboard for each challenge
-
-### Planned Enhancements
-- Leaderboards and participant rankings
-- Email notification system for reminders and milestones
-- Data export functionality (CSV, JSON)
-- Enhanced mobile responsive design
-- Dark mode theme support
-- Advanced search with filters and sorting
-- Social interaction features (comments, reactions, encouragement)
-- Challenge templates for quick setup
-- Detailed analytics and insights
-- Gamification elements (badges, achievements)
-
-## Deployment
-
-### Deploy to Vercel
-
-1. Push your code to GitHub
-2. Import the project in Vercel
-3. Add environment variables in Vercel dashboard
-4. Deploy
-
-Vercel will automatically:
-- Build the Next.js application
-- Set up serverless functions
-- Configure custom domain (if provided)
-
-### Database Migrations
-
-Run migrations on your production Supabase instance using the Supabase dashboard SQL editor or CLI.
-
-## Troubleshooting
-
-### Common Issues
-
-**Authentication not working**
-- Verify environment variables are set correctly
-- Check Supabase project settings for allowed redirect URLs
-- Ensure OAuth providers are configured in Supabase dashboard
-
-**Database errors**
-- Verify migrations have been run in correct order
-- Check RLS policies are enabled
-- Ensure service role key is set for server-side operations
-
-**Build errors**
-- Run `npm run type-check` to identify TypeScript errors
-- Clear `.next` directory and rebuild
-- Verify all dependencies are installed
+---
 
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## License
-
-This project is open source and available under the MIT License.
-
-## Acknowledgments
-
-- Built with [Next.js](https://nextjs.org/)
-- Powered by [Supabase](https://supabase.com/)
-- UI components from [shadcn/ui](https://ui.shadcn.com/)
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ---
 
-**If you find this project helpful, please consider giving it a star on GitHub.**
+## License
+
+This project is open source and available under the [MIT License](LICENSE).
+
+---
+
+## Acknowledgments
+
+- [Next.js](https://nextjs.org/) — React framework
+- [Supabase](https://supabase.com/) — Backend platform
+- [shadcn/ui](https://ui.shadcn.com/) — UI components
+- [Tailwind CSS](https://tailwindcss.com/) — Styling
+
+---
+
+**[Try Gritful](https://www.gritful.app)** — Build habits together.
