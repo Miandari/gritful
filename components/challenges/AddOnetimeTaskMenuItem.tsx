@@ -25,30 +25,47 @@ export function AddTaskMenuItem({ challengeId, challengeEndDate }: AddTaskMenuIt
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const saveTask = async (metric: any) => {
+    const result = await addTaskToChallenge(
+      challengeId,
+      {
+        name: metric.name,
+        type: metric.type,
+        required: metric.required ?? true,
+        config: metric.config,
+        points: metric.points ?? 1,
+        frequency: metric.frequency || 'onetime',
+        deadline: metric.deadline,
+        starts_at: new Date().toISOString(),
+        ends_at: metric.ends_at || challengeEndDate,
+      }
+    );
+
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to add task');
+    }
+    return result;
+  };
+
   const handleSave = async (metric: any) => {
     setIsSubmitting(true);
     try {
-      const result = await addTaskToChallenge(
-        challengeId,
-        {
-          name: metric.name,
-          type: metric.type,
-          required: metric.required ?? true,
-          config: metric.config,
-          points: metric.points ?? 1,
-          frequency: metric.frequency || 'onetime',
-          deadline: metric.deadline,
-          starts_at: new Date().toISOString(),
-          ends_at: metric.ends_at || challengeEndDate,
-        }
-      );
-
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to add task');
-      }
-
+      await saveTask(metric);
       toast.success('Task added successfully!');
       setOpen(false);
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to add task');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSaveAndAddAnother = async (metric: any) => {
+    setIsSubmitting(true);
+    try {
+      await saveTask(metric);
+      toast.success('Task added! Add another or close when done.');
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to add task');
@@ -81,6 +98,7 @@ export function AddTaskMenuItem({ challengeId, challengeEndDate }: AddTaskMenuIt
           <TaskBuilder
             metric={{ type: 'boolean', frequency: 'onetime' }}
             onSave={handleSave}
+            onSaveAndAddAnother={handleSaveAndAddAnother}
             onCancel={() => setOpen(false)}
             challengeEndDate={challengeEndDate}
             isMidChallengeTask={true}

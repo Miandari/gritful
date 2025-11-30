@@ -142,6 +142,12 @@ export function Step2Tasks({ onNext, onPrev }: Step2TasksProps) {
     setEditingMetric(null);
   };
 
+  const handleSaveAndAddAnother = (metric: Partial<MetricFormData>) => {
+    addMetric(metric as Omit<MetricFormData, 'id' | 'order'>);
+    setEditingMetric(null);
+    // Dialog stays open, form resets in TaskBuilder
+  };
+
   const handleNext = () => {
     if (metrics.length === 0) {
       alert('Please add at least one task');
@@ -203,6 +209,7 @@ export function Step2Tasks({ onNext, onPrev }: Step2TasksProps) {
           <MetricBuilder
             metric={editingMetric || {}}
             onSave={handleSaveMetric}
+            onSaveAndAddAnother={editingMetric ? undefined : handleSaveAndAddAnother}
             onCancel={() => setIsDialogOpen(false)}
           />
         </DialogContent>

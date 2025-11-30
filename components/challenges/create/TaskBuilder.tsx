@@ -15,13 +15,14 @@ import { format } from 'date-fns';
 interface TaskBuilderProps {
   metric: Partial<MetricFormData>;
   onSave: (metric: Partial<MetricFormData>) => void;
+  onSaveAndAddAnother?: (metric: Partial<MetricFormData>) => void;
   onCancel: () => void;
   challengeEndDate?: string; // For clamping deadline/end date
   lockFrequency?: TaskFrequency; // Lock frequency to a specific value
   isMidChallengeTask?: boolean; // If true, show task end date picker for recurring tasks
 }
 
-export function TaskBuilder({ metric, onSave, onCancel, challengeEndDate, lockFrequency, isMidChallengeTask }: TaskBuilderProps) {
+export function TaskBuilder({ metric, onSave, onSaveAndAddAnother, onCancel, challengeEndDate, lockFrequency, isMidChallengeTask }: TaskBuilderProps) {
   const [formData, setFormData] = useState<Partial<MetricFormData>>({
     ...defaultMetricTemplates[metric.type as keyof typeof defaultMetricTemplates] || {},
     ...metric,
@@ -116,6 +117,31 @@ export function TaskBuilder({ metric, onSave, onCancel, challengeEndDate, lockFr
       formData.ends_at = new Date(taskEndDate).toISOString();
     }
     onSave(formData);
+  };
+
+  const handleSaveAndAddAnother = () => {
+    const dataToSave = { ...formData };
+    if (dataToSave.type === 'choice') {
+      dataToSave.config = { ...dataToSave.config, options };
+    }
+    if (dataToSave.frequency === 'onetime' && !dataToSave.created_at) {
+      dataToSave.created_at = new Date().toISOString();
+    }
+    if (isMidChallengeTask && dataToSave.frequency !== 'onetime' && taskEndDate) {
+      dataToSave.ends_at = new Date(taskEndDate).toISOString();
+    }
+    onSaveAndAddAnother?.(dataToSave);
+
+    // Reset form to defaults for next task
+    const defaultType = 'boolean';
+    setFormData({
+      ...defaultMetricTemplates[defaultType],
+      name: '',
+      frequency: lockFrequency || 'daily',
+    });
+    setOptions(['Option 1', 'Option 2']);
+    setDeadlinePreset('none');
+    setCustomDeadline('');
   };
 
   const addOption = () => {
@@ -484,6 +510,16 @@ export function TaskBuilder({ metric, onSave, onCancel, challengeEndDate, lockFr
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
+        {onSaveAndAddAnother && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleSaveAndAddAnother}
+            disabled={!formData.name || !formData.type}
+          >
+            Save & Add Another
+          </Button>
+        )}
         <Button
           type="button"
           onClick={handleSave}
