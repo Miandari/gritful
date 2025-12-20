@@ -2,12 +2,13 @@ import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import CopyInviteCodeButton from '@/components/challenges/CopyInviteCodeButton';
 import { AddOnetimeTaskButton } from '@/components/challenges/AddOnetimeTaskButton';
 import { DeadlineBadge } from '@/components/daily-entry/DeadlineBadge';
-import { Infinity, Trophy, ChevronRight } from 'lucide-react';
+import { Infinity, Trophy, ChevronRight, Users } from 'lucide-react';
 import { AchievementBadge } from '@/components/achievements/AchievementBadge';
 import { calculateProgress } from '@/lib/achievements/checkAchievements';
 import type { Achievement, AchievementWithProgress, ParticipantStats, AchievementCategory } from '@/lib/achievements/types';
@@ -157,6 +158,17 @@ export default async function ChallengeOverviewPage({
     .select('username, avatar_url')
     .eq('id', challenge.creator_id)
     .single();
+
+  // Fetch pending join requests count for creators of private challenges
+  let pendingRequestsCount = 0;
+  if (isCreator && !challenge.is_public) {
+    const { count } = await supabase
+      .from('challenge_join_requests')
+      .select('*', { count: 'exact', head: true })
+      .eq('challenge_id', id)
+      .eq('status', 'pending');
+    pendingRequestsCount = count || 0;
+  }
 
   const getFailureModeLabel = (mode: string) => {
     const labels = {
@@ -479,21 +491,55 @@ export default async function ChallengeOverviewPage({
         </Card>
       </div>
 
-      {!challenge.is_public && challenge.invite_code && isCreator && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Invite Code</CardTitle>
-            <CardDescription>Share this code with people you want to join</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-4">
-              <code className="rounded bg-secondary px-4 py-2 text-xl font-mono">
-                {challenge.invite_code}
-              </code>
-              <CopyInviteCodeButton inviteCode={challenge.invite_code} />
-            </div>
-          </CardContent>
-        </Card>
+      {!challenge.is_public && isCreator && (
+        <div className="mt-6 space-y-4">
+          {/* Invite Code */}
+          {challenge.invite_code && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Invite Code</CardTitle>
+                <CardDescription>Share this code with people you want to join</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-4">
+                  <code className="rounded bg-secondary px-4 py-2 text-xl font-mono">
+                    {challenge.invite_code}
+                  </code>
+                  <CopyInviteCodeButton inviteCode={challenge.invite_code} />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Pending Join Requests */}
+          <Card className={pendingRequestsCount > 0 ? 'border-amber-500 dark:border-amber-400' : ''}>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-muted-foreground" />
+                  <CardTitle>Join Requests</CardTitle>
+                </div>
+                {pendingRequestsCount > 0 && (
+                  <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+                    {pendingRequestsCount} pending
+                  </Badge>
+                )}
+              </div>
+              <CardDescription>
+                {pendingRequestsCount > 0
+                  ? 'People are waiting to join your challenge'
+                  : 'No pending requests'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild variant={pendingRequestsCount > 0 ? 'default' : 'outline'}>
+                <Link href="/challenges/requests">
+                  {pendingRequestsCount > 0 ? 'Review Requests' : 'View All Requests'}
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </>
   );

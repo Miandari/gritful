@@ -8,7 +8,7 @@ import { TodayProgressCard } from '@/components/dashboard/TodayProgressCard';
 import { QuickStatsWidget } from '@/components/dashboard/QuickStatsWidget';
 import { DiscoverChallengesWidget } from '@/components/dashboard/DiscoverChallengesWidget';
 import { CreatorRibbon } from '@/components/challenges/CreatorBadge';
-import { Trophy, TrendingUp, Target, Infinity, Clock } from 'lucide-react';
+import { Trophy, TrendingUp, Target, Infinity, Clock, UserPlus } from 'lucide-react';
 import { getChallengeState, ChallengeStateResult } from '@/lib/utils/challengeState';
 import { cn } from '@/lib/utils';
 
@@ -145,6 +145,21 @@ export default async function DashboardPage() {
     .eq('user_id', user.id)
     .in('status', ['pending', 'approved']);
 
+  // Check for pending join requests TO the user's created private challenges
+  let pendingJoinRequestsCount = 0;
+  const privateCreatedChallengeIds = myCreatedChallenges
+    ?.filter(c => !c.is_public)
+    ?.map(c => c.id) || [];
+
+  if (privateCreatedChallengeIds.length > 0) {
+    const { count } = await supabase
+      .from('challenge_join_requests')
+      .select('*', { count: 'exact', head: true })
+      .in('challenge_id', privateCreatedChallengeIds)
+      .eq('status', 'pending');
+    pendingJoinRequestsCount = count || 0;
+  }
+
   // Determine if user is new (no active challenges)
   const isNewUser = activeChallenges.length === 0;
 
@@ -163,6 +178,32 @@ export default async function DashboardPage() {
             : 'Start your journey by creating or joining a challenge'}
         </p>
       </div>
+
+      {/* Pending Join Requests Notification */}
+      {pendingJoinRequestsCount > 0 && (
+        <Card className="border-amber-500 dark:border-amber-400 bg-amber-50/50 dark:bg-amber-950/20">
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900">
+                  <UserPlus className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">
+                    {pendingJoinRequestsCount} pending join {pendingJoinRequestsCount === 1 ? 'request' : 'requests'}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    People want to join your private challenges
+                  </p>
+                </div>
+              </div>
+              <Button asChild>
+                <Link href="/challenges/requests">Review Requests</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* New User Layout - Get Started as Main Card */}
       {isNewUser ? (

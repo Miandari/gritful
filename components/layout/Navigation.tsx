@@ -42,19 +42,29 @@ export function Navigation() {
       setProfile(data);
     };
 
-    // Fetch unread challenge updates count
+    // Fetch combined unread count (challenge messages + notifications)
     const fetchUnreadCount = async () => {
-      const { data, error } = await supabase.rpc('get_total_unread_updates', {
+      // Get challenge messages count
+      const { data: messagesCount, error: messagesError } = await supabase.rpc('get_total_unread_updates', {
         p_user_id: user.id,
       });
 
-      if (error) {
-        console.error('Error fetching unread count:', error);
-        setUnreadCount(0);
-        return;
+      if (messagesError) {
+        console.error('Error fetching unread messages count:', messagesError);
       }
 
-      setUnreadCount(data || 0);
+      // Get notifications count
+      const { count: notificationsCount, error: notificationsError } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('read', false);
+
+      if (notificationsError) {
+        console.error('Error fetching unread notifications count:', notificationsError);
+      }
+
+      setUnreadCount((messagesCount || 0) + (notificationsCount || 0));
     };
 
     fetchProfile();
@@ -112,10 +122,29 @@ export function Navigation() {
       )
       .subscribe();
 
+    // Subscribe to notifications changes (new notifications or marked as read)
+    const notificationsChannel = supabase
+      .channel('notifications-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          // Refresh unread count when notifications change
+          fetchUnreadCount();
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(profileChannel);
       supabase.removeChannel(messagesChannel);
       supabase.removeChannel(participantsChannel);
+      supabase.removeChannel(notificationsChannel);
     };
   }, [user, supabase]);
 
@@ -165,8 +194,8 @@ export function Navigation() {
                 {/* Theme Toggle */}
                 <ThemeToggle />
 
-                {/* Updates Bell */}
-                <Link href="/updates" className="relative">
+                {/* Notifications Bell */}
+                <Link href="/notifications" className="relative">
                   <Button variant="ghost" size="icon" className="relative">
                     <Bell className="h-5 w-5" />
                     {unreadCount > 0 && (
@@ -202,6 +231,9 @@ export function Navigation() {
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link href="/profile?tab=settings">Settings</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/challenges/requests">Join Requests</Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout}>Log out</DropdownMenuItem>

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { Search, Lock, Infinity, Clock } from 'lucide-react';
-import RequestToJoinButton from '@/components/challenges/RequestToJoinButton';
+import JoinPrivateChallengeButtons from '@/components/challenges/JoinPrivateChallengeButtons';
 import { CreatorRibbon } from '@/components/challenges/CreatorBadge';
 import { getChallengeState } from '@/lib/utils/challengeState';
 import { cn } from '@/lib/utils';
@@ -292,10 +292,10 @@ export default async function BrowseChallengesPage({
                       )}
                     </div>
 
-                    {/* Request to Join button for private challenges */}
+                    {/* Join buttons for private challenges */}
                     {!challenge.is_public && !challenge.isParticipating && !challenge.hasRequestedToJoin && user && (
                       <div className="mt-3">
-                        <RequestToJoinButton
+                        <JoinPrivateChallengeButtons
                           challengeId={challenge.id}
                           challengeName={challenge.name}
                         />

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, UserPlus } from 'lucide-react';
 import RemoveParticipantButton from '@/components/challenges/RemoveParticipantButton';
 
 export const revalidate = 0;
@@ -71,6 +71,17 @@ export default async function ParticipantsManagementPage({
     isCreator: p.user_id === challenge.creator_id,
   })) || [];
 
+  // Fetch pending join requests for private challenges
+  let pendingRequestsCount = 0;
+  if (!challenge.is_public) {
+    const { count } = await supabase
+      .from('challenge_join_requests')
+      .select('*', { count: 'exact', head: true })
+      .eq('challenge_id', id)
+      .eq('status', 'pending');
+    pendingRequestsCount = count || 0;
+  }
+
   return (
     <div className="min-h-screen bg-background py-8">
       <div className="mx-auto max-w-4xl px-4">
@@ -85,6 +96,37 @@ export default async function ParticipantsManagementPage({
           <h1 className="text-3xl font-bold text-foreground">Manage Participants</h1>
           <p className="mt-2 text-gray-600">{challenge.name}</p>
         </div>
+
+        {/* Pending Join Requests Section - for private challenges */}
+        {!challenge.is_public && (
+          <Card className={`mb-6 ${pendingRequestsCount > 0 ? 'border-amber-500 dark:border-amber-400' : ''}`}>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <UserPlus className="h-5 w-5 text-muted-foreground" />
+                  <CardTitle>Pending Join Requests</CardTitle>
+                </div>
+                {pendingRequestsCount > 0 && (
+                  <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+                    {pendingRequestsCount} pending
+                  </Badge>
+                )}
+              </div>
+              <CardDescription>
+                {pendingRequestsCount > 0
+                  ? `${pendingRequestsCount} ${pendingRequestsCount === 1 ? 'person is' : 'people are'} waiting to join`
+                  : 'No pending requests at the moment'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild variant={pendingRequestsCount > 0 ? 'default' : 'outline'}>
+                <Link href="/challenges/requests">
+                  {pendingRequestsCount > 0 ? 'Review Requests' : 'View Request History'}
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>

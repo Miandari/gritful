@@ -66,8 +66,8 @@ export function ChallengeTabs({
 
   // Calculate grid columns based on visible tabs
   // Participants: overview, progress, feed, updates, entries, achievements = 6
-  // Non-participants: overview, feed, updates = 3
-  const gridCols = isParticipant ? 'grid-cols-6' : 'grid-cols-3'
+  // Non-participants: overview only = 1
+  const gridCols = isParticipant ? 'grid-cols-6' : 'grid-cols-1'
 
   return (
     <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
@@ -88,29 +88,33 @@ export function ChallengeTabs({
           </TabsTrigger>
         )}
 
-        <TabsTrigger value="feed" className="flex-col sm:flex-row gap-1 px-2 py-2 relative">
-          <Activity className="h-4 w-4 sm:mr-2" />
-          <div className="flex items-center gap-1">
-            <span className="text-xs sm:text-sm">Feed</span>
-            {unreadActivityCount > 0 && (
-              <Badge variant="destructive" className="text-xs">
-                {unreadActivityCount}
-              </Badge>
-            )}
-          </div>
-        </TabsTrigger>
+        {isParticipant && (
+          <TabsTrigger value="feed" className="flex-col sm:flex-row gap-1 px-2 py-2 relative">
+            <Activity className="h-4 w-4 sm:mr-2" />
+            <div className="flex items-center gap-1">
+              <span className="text-xs sm:text-sm">Feed</span>
+              {unreadActivityCount > 0 && (
+                <Badge variant="destructive" className="text-xs">
+                  {unreadActivityCount}
+                </Badge>
+              )}
+            </div>
+          </TabsTrigger>
+        )}
 
-        <TabsTrigger value="updates" className="flex-col sm:flex-row gap-1 px-2 py-2 relative">
-          <MessageSquare className="h-4 w-4 sm:mr-2" />
-          <div className="flex items-center gap-1">
-            <span className="text-xs sm:text-sm">Updates</span>
-            {unreadCount > 0 && (
-              <Badge variant="destructive" className="text-xs">
-                {unreadCount}
-              </Badge>
-            )}
-          </div>
-        </TabsTrigger>
+        {isParticipant && (
+          <TabsTrigger value="updates" className="flex-col sm:flex-row gap-1 px-2 py-2 relative">
+            <MessageSquare className="h-4 w-4 sm:mr-2" />
+            <div className="flex items-center gap-1">
+              <span className="text-xs sm:text-sm">Updates</span>
+              {unreadCount > 0 && (
+                <Badge variant="destructive" className="text-xs">
+                  {unreadCount}
+                </Badge>
+              )}
+            </div>
+          </TabsTrigger>
+        )}
 
         {isParticipant && (
           <TabsTrigger value="entries" className="flex-col sm:flex-row gap-1 px-2 py-2">
