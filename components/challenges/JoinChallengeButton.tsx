@@ -5,7 +5,8 @@ import { joinChallenge } from '@/app/actions/challenges';
 import { submitJoinRequest } from '@/app/actions/joinRequests';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { Loader2, Lock, UserPlus } from 'lucide-react';
+import { Loader2, Lock, UserPlus, Key } from 'lucide-react';
+import EnterCodeModal from './EnterCodeModal';
 
 interface JoinChallengeButtonProps {
   challengeId: string;
@@ -22,8 +23,9 @@ export default function JoinChallengeButton({
 }: JoinChallengeButtonProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [isCodeModalOpen, setIsCodeModalOpen] = useState(false);
 
-  const handleClick = async () => {
+  const handleRequestJoin = async () => {
     setIsLoading(true);
 
     try {
@@ -48,33 +50,72 @@ export default function JoinChallengeButton({
     }
   };
 
-  // If there's a pending request, show status
+  // If there's a pending request, show status + Enter Code button for private
   if (hasPendingRequest) {
     return (
-      <Button variant="outline" disabled>
-        {requestStatus === 'pending' ? 'Request Pending' : `Request ${requestStatus}`}
+      <div className="flex gap-2">
+        <Button variant="outline" disabled>
+          {requestStatus === 'pending' ? 'Request Pending' : `Request ${requestStatus}`}
+        </Button>
+        {!isPublic && (
+          <>
+            <Button variant="secondary" onClick={() => setIsCodeModalOpen(true)}>
+              <Key className="mr-2 h-4 w-4" />
+              Enter Code
+            </Button>
+            <EnterCodeModal
+              isOpen={isCodeModalOpen}
+              onClose={() => setIsCodeModalOpen(false)}
+            />
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // Public challenge - single button
+  if (isPublic) {
+    return (
+      <Button onClick={handleRequestJoin} disabled={isLoading}>
+        {isLoading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Joining...
+          </>
+        ) : (
+          <>
+            <UserPlus className="mr-2 h-4 w-4" />
+            Join Challenge
+          </>
+        )}
       </Button>
     );
   }
 
+  // Private challenge - dual buttons
   return (
-    <Button onClick={handleClick} disabled={isLoading}>
-      {isLoading ? (
-        <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          {isPublic ? 'Joining...' : 'Sending Request...'}
-        </>
-      ) : isPublic ? (
-        <>
-          <UserPlus className="mr-2 h-4 w-4" />
-          Join Challenge
-        </>
-      ) : (
-        <>
-          <Lock className="mr-2 h-4 w-4" />
-          Request to Join
-        </>
-      )}
-    </Button>
+    <div className="flex gap-2">
+      <Button variant="outline" onClick={handleRequestJoin} disabled={isLoading}>
+        {isLoading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Sending...
+          </>
+        ) : (
+          <>
+            <Lock className="mr-2 h-4 w-4" />
+            Request to Join
+          </>
+        )}
+      </Button>
+      <Button variant="secondary" onClick={() => setIsCodeModalOpen(true)}>
+        <Key className="mr-2 h-4 w-4" />
+        Enter Code
+      </Button>
+      <EnterCodeModal
+        isOpen={isCodeModalOpen}
+        onClose={() => setIsCodeModalOpen(false)}
+      />
+    </div>
   );
 }

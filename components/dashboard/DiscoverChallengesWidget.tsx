@@ -4,12 +4,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { Users, Calendar, ArrowRight, Target, Plus, Lock, CheckCircle, Clock } from 'lucide-react';
+import { Users, Calendar, ArrowRight, Target, Plus, Lock, CheckCircle, Clock, Key } from 'lucide-react';
 import { joinChallenge } from '@/app/actions/challenges';
 import { submitJoinRequest } from '@/app/actions/joinRequests';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CreatorRibbon } from '@/components/challenges/CreatorBadge';
+import EnterCodeModal from '@/components/challenges/EnterCodeModal';
 
 interface Challenge {
   id: string;
@@ -39,6 +40,7 @@ interface DiscoverChallengesWidgetProps {
 export function DiscoverChallengesWidget({ challenges, isNewUser, joinRequests = [], showMore = false, currentUserId }: DiscoverChallengesWidgetProps) {
   const router = useRouter();
   const [loadingChallenges, setLoadingChallenges] = useState<Set<string>>(new Set());
+  const [isCodeModalOpen, setIsCodeModalOpen] = useState(false);
 
   const getParticipantCount = (challenge: Challenge) => {
     return challenge.challenge_participants?.[0]?.count || 0;
@@ -155,39 +157,73 @@ export function DiscoverChallengesWidget({ challenges, isNewUser, joinRequests =
                     </Link>
                     <div className="mt-3 pt-3 border-t" onClick={(e) => e.stopPropagation()}>
                       {joinRequest ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="w-full"
-                          disabled
-                        >
-                          {joinRequest.status === 'pending' ? (
-                            <>
-                              <Clock className="mr-2 h-3 w-3" />
-                              Request Pending
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle className="mr-2 h-3 w-3" />
-                              Request {joinRequest.status}
-                            </>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1"
+                            disabled
+                          >
+                            {joinRequest.status === 'pending' ? (
+                              <>
+                                <Clock className="mr-2 h-3 w-3" />
+                                Request Pending
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle className="mr-2 h-3 w-3" />
+                                Request {joinRequest.status}
+                              </>
+                            )}
+                          </Button>
+                          {/* Still show Enter Code button even if request is pending */}
+                          {!challenge.is_public && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setIsCodeModalOpen(true);
+                              }}
+                            >
+                              <Key className="h-3 w-3" />
+                            </Button>
                           )}
-                        </Button>
-                      ) : (
+                        </div>
+                      ) : challenge.is_public ? (
                         <Button
                           size="sm"
                           className="w-full"
                           onClick={(e) => handleJoin(challenge.id, challenge.is_public, e)}
                           disabled={isLoading}
                         >
-                          {isLoading ? (
-                            'Loading...'
-                          ) : challenge.is_public ? (
-                            'Join Challenge'
-                          ) : (
-                            'Request to Join'
-                          )}
+                          {isLoading ? 'Loading...' : 'Join Challenge'}
                         </Button>
+                      ) : (
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1"
+                            onClick={(e) => handleJoin(challenge.id, challenge.is_public, e)}
+                            disabled={isLoading}
+                          >
+                            {isLoading ? 'Loading...' : 'Request to Join'}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setIsCodeModalOpen(true);
+                            }}
+                          >
+                            <Key className="mr-1 h-3 w-3" />
+                            Code
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -227,6 +263,12 @@ export function DiscoverChallengesWidget({ challenges, isNewUser, joinRequests =
           </div>
         )}
       </CardContent>
+
+      {/* Enter Code Modal */}
+      <EnterCodeModal
+        isOpen={isCodeModalOpen}
+        onClose={() => setIsCodeModalOpen(false)}
+      />
     </Card>
   );
 }
