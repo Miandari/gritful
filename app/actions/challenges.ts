@@ -221,8 +221,20 @@ export async function joinChallengeWithCode(inviteCode: string) {
     return { success: false, error: error.message };
   }
 
+  // If user had a pending join request, mark it as approved (joined via code)
+  await supabase
+    .from('challenge_join_requests')
+    .update({
+      status: 'approved',
+      reviewed_at: new Date().toISOString(),
+    })
+    .eq('challenge_id', challenge.id)
+    .eq('user_id', user.id)
+    .eq('status', 'pending');
+
   revalidatePath('/dashboard');
   revalidatePath(`/challenges/${challenge.id}`);
+  revalidatePath('/challenges/requests');
 
   return { success: true, challengeId: challenge.id };
 }
