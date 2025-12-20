@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Plus, Trash2, Calendar } from 'lucide-react';
+import { Plus, Trash2, Calendar, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +11,39 @@ import { defaultMetricTemplates, TaskFrequency } from '@/lib/validations/challen
 import { MetricFormData } from '@/lib/validations/challenge';
 import { DEADLINE_PRESETS, calculateDeadline, DeadlinePreset, formatDeadlineForDisplay } from '@/lib/utils/deadlines';
 import { format } from 'date-fns';
+
+type GoalDirection = 'at_least' | 'at_most';
+
+// Helper to expand goal/direction to full config
+function expandGoalToConfig(
+  type: 'number' | 'duration',
+  goal: number,
+  direction: GoalDirection,
+  units?: string,
+  existingScoringMode?: 'binary' | 'scaled' | 'tiered'
+) {
+  return {
+    config: {
+      min: 0,
+      max: direction === 'at_least' ? Math.max(goal * 4, 1000) : goal,
+      ...(type === 'number' && units ? { units } : {}),
+    },
+    threshold: goal,
+    threshold_type: direction === 'at_least' ? 'min' as const : 'max' as const,
+    // Preserve existing scoring_mode (from templates) or default to binary
+    scoring_mode: existingScoringMode || 'binary' as const,
+  };
+}
+
+// Helper to derive goal/direction from existing metric data
+function deriveGoalFromMetric(metric: Partial<MetricFormData>): { goal: number; direction: GoalDirection } {
+  const threshold = metric.threshold || 0;
+  const thresholdType = metric.threshold_type || 'min';
+  return {
+    goal: threshold,
+    direction: thresholdType === 'min' ? 'at_least' : 'at_most',
+  };
+}
 
 interface TaskBuilderProps {
   metric: Partial<MetricFormData>;
@@ -37,6 +70,13 @@ export function TaskBuilder({ metric, onSave, onSaveAndAddAnother, onCancel, cha
     challengeEndDate ? format(new Date(challengeEndDate), 'yyyy-MM-dd') : ''
   );
 
+  // Simplified goal/direction state for number/duration types
+  const derivedGoal = deriveGoalFromMetric(metric);
+  const [goal, setGoal] = useState<number>(derivedGoal.goal);
+  const [direction, setDirection] = useState<GoalDirection>(derivedGoal.direction);
+  const [units, setUnits] = useState<string>(metric.config?.units || '');
+  const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
+
   const handleTypeChange = (type: MetricFormData['type']) => {
     const template = defaultMetricTemplates[type as keyof typeof defaultMetricTemplates];
     setFormData({
@@ -46,6 +86,12 @@ export function TaskBuilder({ metric, onSave, onSaveAndAddAnother, onCancel, cha
     });
     if (type === 'choice') {
       setOptions(['Option 1', 'Option 2']);
+    }
+    // Reset goal/direction for number/duration types
+    if (type === 'number' || type === 'duration') {
+      setGoal(0);
+      setDirection('at_least');
+      setUnits('');
     }
   };
 
@@ -105,22 +151,49 @@ export function TaskBuilder({ metric, onSave, onSaveAndAddAnother, onCancel, cha
   };
 
   const handleSave = () => {
-    if (formData.type === 'choice') {
-      formData.config = { ...formData.config, options };
+    let dataToSave = { ...formData };
+
+    // For number/duration types, expand goal/direction to full config
+    if (formData.type === 'number' || formData.type === 'duration') {
+      const expanded = expandGoalToConfig(
+        formData.type,
+        goal,
+        direction,
+        formData.type === 'number' ? units : undefined,
+        formData.scoring_mode // Preserve existing scoring_mode (e.g., from templates)
+      );
+      dataToSave = { ...dataToSave, ...expanded };
+    }
+
+    if (dataToSave.type === 'choice') {
+      dataToSave.config = { ...dataToSave.config, options };
     }
     // Add created_at for one-time tasks if not already set
-    if (formData.frequency === 'onetime' && !formData.created_at) {
-      formData.created_at = new Date().toISOString();
+    if (dataToSave.frequency === 'onetime' && !dataToSave.created_at) {
+      dataToSave.created_at = new Date().toISOString();
     }
     // Add ends_at for mid-challenge recurring tasks
-    if (isMidChallengeTask && formData.frequency !== 'onetime' && taskEndDate) {
-      formData.ends_at = new Date(taskEndDate).toISOString();
+    if (isMidChallengeTask && dataToSave.frequency !== 'onetime' && taskEndDate) {
+      dataToSave.ends_at = new Date(taskEndDate).toISOString();
     }
-    onSave(formData);
+    onSave(dataToSave);
   };
 
   const handleSaveAndAddAnother = () => {
-    const dataToSave = { ...formData };
+    let dataToSave = { ...formData };
+
+    // For number/duration types, expand goal/direction to full config
+    if (formData.type === 'number' || formData.type === 'duration') {
+      const expanded = expandGoalToConfig(
+        formData.type,
+        goal,
+        direction,
+        formData.type === 'number' ? units : undefined,
+        formData.scoring_mode // Preserve existing scoring_mode (e.g., from templates)
+      );
+      dataToSave = { ...dataToSave, ...expanded };
+    }
+
     if (dataToSave.type === 'choice') {
       dataToSave.config = { ...dataToSave.config, options };
     }
@@ -142,6 +215,10 @@ export function TaskBuilder({ metric, onSave, onSaveAndAddAnother, onCancel, cha
     setOptions(['Option 1', 'Option 2']);
     setDeadlinePreset('none');
     setCustomDeadline('');
+    setGoal(0);
+    setDirection('at_least');
+    setUnits('');
+    setShowAdvanced(false);
   };
 
   const addOption = () => {
@@ -287,12 +364,12 @@ export function TaskBuilder({ metric, onSave, onSaveAndAddAnother, onCancel, cha
             <SelectValue placeholder="Select task type" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="boolean">Yes/No Checkbox</SelectItem>
-            <SelectItem value="number">Number</SelectItem>
-            <SelectItem value="duration">Duration (Time)</SelectItem>
-            <SelectItem value="choice">Multiple Choice</SelectItem>
-            <SelectItem value="text">Text Entry</SelectItem>
-            <SelectItem value="file">File Upload</SelectItem>
+            <SelectItem value="boolean">Checkbox - Did you do it?</SelectItem>
+            <SelectItem value="number">Number - How many?</SelectItem>
+            <SelectItem value="duration">Duration - How long?</SelectItem>
+            <SelectItem value="choice">Choice - Pick one option</SelectItem>
+            <SelectItem value="text" className="text-muted-foreground">Text Entry</SelectItem>
+            <SelectItem value="file" className="text-muted-foreground">File Upload</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -300,87 +377,106 @@ export function TaskBuilder({ metric, onSave, onSaveAndAddAnother, onCancel, cha
       {/* Type-specific configuration */}
       {formData.type === 'number' && (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="min">Minimum Value</Label>
+          <div className="flex items-end gap-3">
+            <div className="flex-1">
+              <Label htmlFor="goal">Goal</Label>
               <Input
-                id="min"
+                id="goal"
                 type="number"
-                value={formData.config?.min || 0}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    config: { ...formData.config, min: Number(e.target.value) },
-                  })
-                }
+                min="0"
+                value={goal || ''}
+                onChange={(e) => setGoal(Number(e.target.value) || 0)}
+                placeholder="e.g., 20"
                 className="mt-1"
               />
             </div>
-            <div>
-              <Label htmlFor="max">Maximum Value</Label>
+            <div className="flex-1">
+              <Label htmlFor="units">Units (optional)</Label>
               <Input
-                id="max"
-                type="number"
-                value={formData.config?.max || 100}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    config: { ...formData.config, max: Number(e.target.value) },
-                  })
-                }
+                id="units"
+                value={units}
+                onChange={(e) => setUnits(e.target.value)}
+                placeholder="e.g., reps, pages"
                 className="mt-1"
               />
             </div>
           </div>
           <div>
-            <Label htmlFor="units">Units (optional)</Label>
-            <Input
-              id="units"
-              value={formData.config?.units || ''}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  config: { ...formData.config, units: e.target.value },
-                })
-              }
-              placeholder="e.g., reps, miles, kg"
-              className="mt-1"
-            />
+            <Label className="text-sm text-muted-foreground">Direction</Label>
+            <div className="flex gap-4 mt-1">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="direction"
+                  checked={direction === 'at_least'}
+                  onChange={() => setDirection('at_least')}
+                  className="h-4 w-4 accent-primary"
+                />
+                <span className="text-sm">At least</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="direction"
+                  checked={direction === 'at_most'}
+                  onChange={() => setDirection('at_most')}
+                  className="h-4 w-4 accent-primary"
+                />
+                <span className="text-sm">At most</span>
+              </label>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {direction === 'at_least'
+                ? `Earn points when you reach at least ${goal || 0}${units ? ` ${units}` : ''}`
+                : `Earn points when you stay at or below ${goal || 0}${units ? ` ${units}` : ''}`}
+            </p>
           </div>
         </div>
       )}
 
       {formData.type === 'duration' && (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-4">
           <div>
-            <Label htmlFor="duration-min">Minimum (minutes)</Label>
+            <Label htmlFor="goal-duration">Goal (minutes)</Label>
             <Input
-              id="duration-min"
+              id="goal-duration"
               type="number"
-              value={formData.config?.min || 0}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  config: { ...formData.config, min: Number(e.target.value) },
-                })
-              }
+              min="0"
+              value={goal || ''}
+              onChange={(e) => setGoal(Number(e.target.value) || 0)}
+              placeholder="e.g., 30"
               className="mt-1"
             />
           </div>
           <div>
-            <Label htmlFor="duration-max">Maximum (minutes)</Label>
-            <Input
-              id="duration-max"
-              type="number"
-              value={formData.config?.max || 1440}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  config: { ...formData.config, max: Number(e.target.value) },
-                })
-              }
-              className="mt-1"
-            />
+            <Label className="text-sm text-muted-foreground">Direction</Label>
+            <div className="flex gap-4 mt-1">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="direction-duration"
+                  checked={direction === 'at_least'}
+                  onChange={() => setDirection('at_least')}
+                  className="h-4 w-4 accent-primary"
+                />
+                <span className="text-sm">At least</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="direction-duration"
+                  checked={direction === 'at_most'}
+                  onChange={() => setDirection('at_most')}
+                  className="h-4 w-4 accent-primary"
+                />
+                <span className="text-sm">At most</span>
+              </label>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {direction === 'at_least'
+                ? `Earn points when you spend at least ${goal || 0} minutes`
+                : `Earn points when you spend at most ${goal || 0} minutes`}
+            </p>
           </div>
         </div>
       )}
@@ -452,58 +548,59 @@ export function TaskBuilder({ metric, onSave, onSaveAndAddAnother, onCancel, cha
         </div>
       )}
 
-      {/* Scoring Configuration */}
-      <div className="border-t pt-4 space-y-4">
-        <h4 className="font-medium text-sm">Scoring Configuration</h4>
+      {/* Advanced Settings (Collapsible) */}
+      <div className="border-t pt-4">
+        <button
+          type="button"
+          onClick={() => setShowAdvanced(!showAdvanced)}
+          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full"
+        >
+          {showAdvanced ? (
+            <ChevronDown className="h-4 w-4" />
+          ) : (
+            <ChevronRight className="h-4 w-4" />
+          )}
+          <span>Advanced Settings</span>
+          {!showAdvanced && (
+            <span className="text-xs ml-auto">
+              {formData.points !== 1 && `${formData.points} pts`}
+              {formData.required === false && ' (optional)'}
+            </span>
+          )}
+        </button>
 
-        <div>
-          <Label htmlFor="points">Points *</Label>
-          <Input
-            id="points"
-            type="number"
-            min="0"
-            value={formData.points || 1}
-            onChange={(e) =>
-              setFormData({ ...formData, points: Number(e.target.value) })
-            }
-            placeholder="1"
-            className="mt-1"
-          />
-          <p className="text-xs text-muted-foreground mt-1">
-            Points awarded when this task is completed
-          </p>
-        </div>
+        {showAdvanced && (
+          <div className="mt-4 space-y-4 pl-6">
+            <div>
+              <Label htmlFor="points">Points</Label>
+              <Input
+                id="points"
+                type="number"
+                min="0"
+                value={formData.points || 1}
+                onChange={(e) =>
+                  setFormData({ ...formData, points: Number(e.target.value) })
+                }
+                placeholder="1"
+                className="mt-1"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Points awarded when this task is completed (default: 1)
+              </p>
+            </div>
 
-        {(formData.type === 'number' || formData.type === 'duration') && (
-          <div>
-            <Label htmlFor="threshold">Minimum for Full Points</Label>
-            <Input
-              id="threshold"
-              type="number"
-              min="0"
-              value={formData.threshold || 0}
-              onChange={(e) =>
-                setFormData({ ...formData, threshold: Number(e.target.value), scoring_mode: 'binary' })
-              }
-              placeholder="0"
-              className="mt-1"
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              User must reach this value to earn full points
-            </p>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="required"
+                checked={formData.required !== false}
+                onCheckedChange={(checked) =>
+                  setFormData({ ...formData, required: checked as boolean })
+                }
+              />
+              <Label htmlFor="required">Required field</Label>
+            </div>
           </div>
         )}
-      </div>
-
-      <div className="flex items-center space-x-2">
-        <Checkbox
-          id="required"
-          checked={formData.required !== false}
-          onCheckedChange={(checked) =>
-            setFormData({ ...formData, required: checked as boolean })
-          }
-        />
-        <Label htmlFor="required">Required field</Label>
       </div>
 
       <div className="flex justify-end gap-2">

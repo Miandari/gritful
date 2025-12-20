@@ -38,6 +38,8 @@ export const metricSchema = z.object({
   // For one-time tasks: optional deadline and creation timestamp
   deadline: z.string().optional(), // ISO date string
   created_at: z.string().optional(), // ISO timestamp for ordering one-time tasks
+  // For mid-challenge recurring tasks: when the task stops being tracked
+  ends_at: z.string().optional(), // ISO date string
 });
 
 // Challenge creation schema
