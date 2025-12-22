@@ -393,3 +393,98 @@ export async function addOnetimeTaskToChallenge(
     frequency: 'onetime',
   });
 }
+
+/**
+ * Batch add multiple one-time tasks to a challenge (creator only)
+ * All tasks are created as boolean (checkbox) type with the same deadline
+ */
+export async function batchAddTasks(
+  challengeId: string,
+  taskNames: string[],
+  deadline: string | null
+): Promise<{ success: boolean; count: number; error?: string }> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, count: 0, error: 'Not authenticated' };
+  }
+
+  if (!taskNames || taskNames.length === 0) {
+    return { success: false, count: 0, error: 'No tasks provided' };
+  }
+
+  try {
+    // Verify user is the challenge creator
+    const { data: challenge, error: challengeError } = await supabase
+      .from('challenges')
+      .select('id, creator_id, metrics, ends_at')
+      .eq('id', challengeId)
+      .single();
+
+    if (challengeError || !challenge) {
+      return { success: false, count: 0, error: 'Challenge not found' };
+    }
+
+    if (challenge.creator_id !== user.id) {
+      return { success: false, count: 0, error: 'Only the challenge creator can add tasks' };
+    }
+
+    // Validate deadline doesn't exceed challenge end
+    let taskDeadline = deadline;
+    if (deadline && challenge.ends_at) {
+      const deadlineDate = new Date(deadline);
+      const challengeEndDate = new Date(challenge.ends_at);
+      if (deadlineDate > challengeEndDate) {
+        taskDeadline = challenge.ends_at;
+      }
+    }
+
+    // Create all new tasks
+    const metrics = (challenge.metrics as any[]) || [];
+    const now = new Date().toISOString();
+    const newTasks = taskNames.map((name, index) => ({
+      id: `metric_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`,
+      name: name.trim(),
+      type: 'boolean',
+      required: true,
+      config: {},
+      order: metrics.length + index,
+      points: 1,
+      frequency: 'onetime',
+      deadline: taskDeadline,
+      starts_at: now,
+      ends_at: challenge.ends_at,
+      created_at: now,
+    }));
+
+    // Add to metrics array
+    const updatedMetrics = [...metrics, ...newTasks];
+
+    // Update the challenge
+    const { error: updateError } = await supabase
+      .from('challenges')
+      .update({ metrics: updatedMetrics })
+      .eq('id', challengeId);
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    // Revalidate paths
+    revalidatePath(`/challenges/${challengeId}`);
+    revalidatePath(`/challenges/${challengeId}/entries`);
+    revalidatePath('/dashboard/today');
+
+    return { success: true, count: newTasks.length };
+  } catch (error) {
+    console.error('Error batch adding tasks:', error);
+    if (error instanceof Error) {
+      return { success: false, count: 0, error: error.message };
+    }
+    return { success: false, count: 0, error: 'Failed to add tasks' };
+  }
+}

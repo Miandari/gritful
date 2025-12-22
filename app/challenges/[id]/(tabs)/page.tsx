@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import Link from 'next/link';
 import CopyInviteCodeButton from '@/components/challenges/CopyInviteCodeButton';
 import { AddOnetimeTaskButton } from '@/components/challenges/AddOnetimeTaskButton';
+import { BatchAddTasksModal } from '@/components/challenges/BatchAddTasksModal';
 import { DeadlineBadge } from '@/components/daily-entry/DeadlineBadge';
 import { Infinity, Trophy, ChevronRight, Users } from 'lucide-react';
 import { AchievementBadge } from '@/components/achievements/AchievementBadge';
@@ -445,10 +446,16 @@ export default async function ChallengeOverviewPage({
                       </h4>
                       {/* Debug: isCreator={String(isCreator)}, isActive={String(isActive)} */}
                       {isCreator && (
-                        <AddOnetimeTaskButton
-                          challengeId={challenge.id}
-                          challengeEndDate={challenge.ends_at}
-                        />
+                        <div className="flex gap-2">
+                          <BatchAddTasksModal
+                            challengeId={challenge.id}
+                            challengeEndDate={challenge.ends_at}
+                          />
+                          <AddOnetimeTaskButton
+                            challengeId={challenge.id}
+                            challengeEndDate={challenge.ends_at}
+                          />
+                        </div>
                       )}
                     </div>
                     {onetimeTasks.length > 0 ? (
