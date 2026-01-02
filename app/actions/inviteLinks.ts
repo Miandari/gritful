@@ -24,14 +24,23 @@ export async function createInviteLink(
   challengeId: string,
   settings?: InviteLinkSettings
 ) {
-  const supabase = await createClient();
+  const userSupabase = await createClient();
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await userSupabase.auth.getUser();
 
   if (!user) {
     return { success: false, error: 'Not authenticated' };
+  }
+
+  // Use service role client for database operations to bypass RLS
+  let supabase;
+  try {
+    supabase = createServiceRoleClient();
+  } catch (err) {
+    console.error('[createInviteLink] Failed to create service role client:', err);
+    return { success: false, error: 'Server configuration error' };
   }
 
   try {
@@ -145,14 +154,23 @@ export async function updateInviteLinkSettings(
   linkId: string,
   settings: InviteLinkSettings
 ) {
-  const supabase = await createClient();
+  const userSupabase = await createClient();
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await userSupabase.auth.getUser();
 
   if (!user) {
     return { success: false, error: 'Not authenticated' };
+  }
+
+  // Use service role client for database operations to bypass RLS
+  let supabase;
+  try {
+    supabase = createServiceRoleClient();
+  } catch (err) {
+    console.error('[updateInviteLinkSettings] Failed to create service role client:', err);
+    return { success: false, error: 'Server configuration error' };
   }
 
   try {
@@ -206,14 +224,23 @@ export async function updateInviteLinkSettings(
  * Revoke an invite link (deactivate it)
  */
 export async function revokeInviteLink(linkId: string) {
-  const supabase = await createClient();
+  const userSupabase = await createClient();
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await userSupabase.auth.getUser();
 
   if (!user) {
     return { success: false, error: 'Not authenticated' };
+  }
+
+  // Use service role client for database operations to bypass RLS
+  let supabase;
+  try {
+    supabase = createServiceRoleClient();
+  } catch (err) {
+    console.error('[revokeInviteLink] Failed to create service role client:', err);
+    return { success: false, error: 'Server configuration error' };
   }
 
   try {

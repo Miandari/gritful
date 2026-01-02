@@ -84,6 +84,52 @@ This command will **PERMANENTLY DELETE ALL USER DATA**:
 
 **NO EMOJIS**: Do not use emojis anywhere in the codebase, file content, UI/UX, or commit messages unless explicitly necessary. Keep all text professional and emoji-free.
 
+## RLS (Row Level Security) - IMPORTANT FOR NEW FEATURES
+
+**Every new feature that queries the database must consider RLS policies.**
+
+### Common RLS Issues
+
+1. **Private data not accessible**: If a query returns empty or errors, check if RLS is blocking access
+2. **Unauthenticated users blocked**: RLS policies with `TO authenticated` block anonymous users
+3. **Cross-user data access**: Users can only see data they have explicit access to
+
+### Checklist for New Features
+
+Before implementing any feature that reads/writes data:
+
+- [ ] **Identify who needs access**: authenticated users, anonymous users, specific roles (creator, participant)?
+- [ ] **Check existing RLS policies**: Does the table have policies that cover this use case?
+- [ ] **Test as different user types**: Test as logged-out user, logged-in non-participant, participant, creator
+- [ ] **Use service role client when needed**: For features like invite link previews that need to bypass RLS, use `createServiceRoleClient()` (use sparingly!)
+
+### When to Use Service Role Client
+
+Use `createServiceRoleClient()` only when:
+- Showing preview data to unauthenticated users (e.g., invite link landing page)
+- Admin operations that need to bypass RLS
+- Background jobs/cron tasks
+
+**Never expose service role operations to user-controlled input without validation!**
+
+### Schema Cache Issue (Foreign Key Joins)
+
+PostgREST may not detect foreign key relationships. If you get errors like:
+```
+"Could not find a relationship between 'X' and 'Y' in the schema cache"
+```
+
+**Workaround**: Fetch related data in separate queries and join in application code:
+```typescript
+// Instead of:
+.select('*, profile:profiles!user_id_fkey(username)')
+
+// Do this:
+const { data } = await supabase.from('table').select('*');
+const { data: profiles } = await supabase.from('profiles').select('*').in('id', userIds);
+// Join in code using Map
+```
+
 ## Pinned Issues
 
 ### 1. Supabase Schema Cache Issue - Foreign Key Relationship
