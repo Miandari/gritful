@@ -17,6 +17,7 @@ import { OnetimeTasksSection } from './OnetimeTasksSection';
 import { PeriodicTasksSection } from './PeriodicTasksSection';
 import { AchievementQueue } from '@/components/achievements/AchievementPopup';
 import type { EarnedAchievement } from '@/lib/achievements/types';
+import { parseLocalDate } from '@/lib/utils/dates';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -105,11 +106,16 @@ export default function DailyEntryForm({
     const monthly: Metric[] = [];
     const onetime: Metric[] = [];
 
-    // Parse the target date for comparison (use start of day in local timezone)
+    // Parse the target date for comparison using parseLocalDate for correct timezone handling
     const entryDate = targetDate
-      ? new Date(targetDate + 'T00:00:00')
-      : new Date();
-    entryDate.setHours(0, 0, 0, 0);
+      ? parseLocalDate(targetDate)
+      : (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; })();
+
+    // Helper to extract date string from ISO timestamp or date string
+    const getDateString = (dateStr: string): string => {
+      // If it contains 'T', it's a full ISO timestamp - extract just the date part
+      return dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+    };
 
     // Helper to check if a task is active on the entry date
     const isTaskActiveOnDate = (metric: Metric): boolean => {
@@ -120,8 +126,7 @@ export default function DailyEntryForm({
 
       // Check starts_at - task must have started by entry date
       if (metric.starts_at) {
-        const startDate = new Date(metric.starts_at);
-        startDate.setHours(0, 0, 0, 0);
+        const startDate = parseLocalDate(getDateString(metric.starts_at));
         if (entryDate < startDate) {
           return false;
         }
@@ -129,7 +134,8 @@ export default function DailyEntryForm({
 
       // Check ends_at - task must not have ended before entry date
       if (metric.ends_at) {
-        const endDate = new Date(metric.ends_at);
+        const endDate = parseLocalDate(getDateString(metric.ends_at));
+        // Set to end of day for comparison
         endDate.setHours(23, 59, 59, 999);
         if (entryDate > endDate) {
           return false;

@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { format } from 'date-fns';
 import { calculateEntryScore } from '@/lib/utils/scoring';
-import { getTodayDateString } from '@/lib/utils/dates';
+import { getTodayDateString, parseLocalDate } from '@/lib/utils/dates';
 import { checkAndAwardAchievements } from '@/lib/achievements/checkAchievements';
 import type { EarnedAchievement } from '@/lib/achievements/types';
 
@@ -182,8 +182,8 @@ async function updateStreak(participantId: string) {
     today.setHours(0, 0, 0, 0);
 
     for (let i = 0; i < entries.length; i++) {
-      const entryDate = new Date(entries[i].entry_date);
-      entryDate.setHours(0, 0, 0, 0);
+      // Use parseLocalDate to correctly handle YYYY-MM-DD strings in local timezone
+      const entryDate = parseLocalDate(entries[i].entry_date);
 
       const dayDiff = Math.floor((today.getTime() - entryDate.getTime()) / (1000 * 60 * 60 * 24));
 

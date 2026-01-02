@@ -11,6 +11,18 @@ export function getTodayDateString(): string {
 }
 
 /**
+ * Parse a YYYY-MM-DD date string as local midnight (not UTC)
+ *
+ * IMPORTANT: Do NOT use `new Date("YYYY-MM-DD")` as it parses as UTC midnight,
+ * which causes timezone-related bugs when compared with local dates.
+ * This function correctly creates a Date at midnight in the local timezone.
+ */
+export function parseLocalDate(dateStr: string): Date {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day); // month is 0-indexed in JS Date
+}
+
+/**
  * Convert a date to YYYY-MM-DD format in local timezone
  */
 export function toLocalDateString(date: Date): string {

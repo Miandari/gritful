@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 import { CheckCircle, XCircle, Clock } from 'lucide-react';
 import DailyEntryForm from '@/components/daily-entry/DailyEntryForm';
 import { DateSelector } from '@/components/challenges/DateSelector';
+import { parseLocalDate } from '@/lib/utils/dates';
 
 interface OnetimeCompletion {
   task_id: string;
@@ -83,7 +84,7 @@ export default function EntriesClient({
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg">
-                  {format(new Date(selectedDate + 'T00:00:00'), 'EEEE, MMMM d, yyyy')}
+                  {format(parseLocalDate(selectedDate), 'EEEE, MMMM d, yyyy')}
                 </CardTitle>
                 <div className="flex items-center gap-2">
                   {isToday && <Badge>Today</Badge>}

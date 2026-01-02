@@ -14,6 +14,7 @@ import {
   PeriodicCompletion,
   ChallengeMetric,
 } from '@/lib/utils/calendarStatus';
+import { parseLocalDate } from '@/lib/utils/dates';
 
 interface DateSelectorProps {
   challengeStartDate: Date;
@@ -39,7 +40,8 @@ export function DateSelector({
 
   const maxDate = today < challengeEndDate ? today : challengeEndDate;
 
-  const [currentMonth, setCurrentMonth] = useState(selectedDate ? new Date(selectedDate) : today);
+  // Use parseLocalDate to correctly handle YYYY-MM-DD strings in local timezone
+  const [currentMonth, setCurrentMonth] = useState(selectedDate ? parseLocalDate(selectedDate) : today);
 
   const entryMap = new Map(entries.map(e => [e.entry_date, e]));
 
