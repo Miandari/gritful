@@ -279,7 +279,14 @@ export async function regenerateInviteLink(
 export async function getInviteLinkByToken(token: string) {
   // Use service role client to bypass RLS for invite link preview
   // This allows viewing private challenge info via invite link
-  const supabase = createServiceRoleClient();
+  let supabase;
+  try {
+    supabase = createServiceRoleClient();
+  } catch (err) {
+    console.error('[getInviteLinkByToken] Failed to create service role client:', err);
+    return { success: false, error: 'Server configuration error' };
+  }
+
   const userSupabase = await createClient();
 
   try {
@@ -290,6 +297,12 @@ export async function getInviteLinkByToken(token: string) {
       .eq('token', token)
       .eq('is_active', true)
       .single() as any;
+
+    console.log('[getInviteLinkByToken] Link query result:', {
+      token,
+      found: !!link,
+      error: linkError?.message
+    });
 
     if (linkError || !link) {
       return { success: false, error: 'Invalid or expired invite link' };
@@ -306,6 +319,8 @@ export async function getInviteLinkByToken(token: string) {
     }
 
     // Get challenge info (using service role to bypass RLS for private challenges)
+    // Note: Fetching creator profile separately due to Supabase schema cache issue
+    // (foreign key relationship not detected by PostgREST)
     const { data: challenge, error: challengeError } = await supabase
       .from('challenges')
       .select(`
@@ -316,19 +331,25 @@ export async function getInviteLinkByToken(token: string) {
         ends_at,
         duration_days,
         metrics,
-        creator_id,
-        creator:profiles!challenges_creator_id_fkey (
-          id,
-          username,
-          avatar_url
-        )
+        creator_id
       `)
       .eq('id', link.challenge_id)
       .single() as any;
 
     if (challengeError || !challenge) {
+      console.error('[getInviteLinkByToken] Challenge query error:', challengeError);
       return { success: false, error: 'Challenge not found' };
     }
+
+    // Fetch creator profile separately
+    const { data: creatorProfile } = await supabase
+      .from('profiles')
+      .select('id, username, avatar_url')
+      .eq('id', challenge.creator_id)
+      .single() as any;
+
+    // Attach creator to challenge object
+    challenge.creator = creatorProfile || null;
 
     // Get participant count
     const { count: participantCount } = await supabase
