@@ -101,15 +101,22 @@ export function getDayStatus(params: GetDayStatusParams): DayStatus {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  // Normalize challenge dates to midnight for accurate comparison
+  const startMidnight = new Date(challengeStartDate);
+  startMidnight.setHours(0, 0, 0, 0);
+
+  const endMidnight = challengeEndDate ? new Date(challengeEndDate) : null;
+  if (endMidnight) endMidnight.setHours(0, 0, 0, 0);
+
   const isToday = isSameDay(dayMidnight, today);
   const isPast = dayMidnight < today;
   const isFuture = dayMidnight > today;
 
   // Determine the max selectable date (can't select future dates beyond today)
-  const maxDate = challengeEndDate && challengeEndDate < today ? challengeEndDate : today;
+  const maxDate = endMidnight && endMidnight < today ? endMidnight : today;
 
   // Outside challenge period
-  if (dayMidnight < challengeStartDate || dayMidnight > maxDate) {
+  if (dayMidnight < startMidnight || dayMidnight > maxDate) {
     return 'outside';
   }
 

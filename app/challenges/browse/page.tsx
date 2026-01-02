@@ -10,7 +10,7 @@ import JoinPrivateChallengeButtons from '@/components/challenges/JoinPrivateChal
 import { CreatorRibbon } from '@/components/challenges/CreatorBadge';
 import { getChallengeState } from '@/lib/utils/challengeState';
 import { cn } from '@/lib/utils';
-import { parseLocalDate } from '@/lib/utils/dates';
+import { parseLocalDate, getLocalDateFromISO } from '@/lib/utils/dates';
 
 export default async function BrowseChallengesPage({
   searchParams,
@@ -166,7 +166,7 @@ export default async function BrowseChallengesPage({
           // Use parseLocalDate for correct timezone handling
           const today = new Date();
           today.setHours(0, 0, 0, 0);
-          const startDate = parseLocalDate(challenge.starts_at.split('T')[0]);
+          const startDate = parseLocalDate(getLocalDateFromISO(challenge.starts_at));
           const daysElapsed = Math.floor(
             (today.getTime() - startDate.getTime()) /
               (1000 * 60 * 60 * 24)

@@ -13,22 +13,28 @@ import {
   PeriodicCompletion,
   ChallengeMetric,
 } from '@/lib/utils/calendarStatus';
+import { parseLocalDate } from '@/lib/utils/dates';
 
 interface ProgressCalendarProps {
   entries: DailyEntry[];
   periodicCompletions?: PeriodicCompletion[];
   metrics?: ChallengeMetric[];
-  challengeStartDate: Date;
-  challengeEndDate: Date;
+  challengeStartDateStr: string;
+  challengeEndDateStr: string | null;
 }
 
 export function ProgressCalendar({
   entries,
   periodicCompletions = [],
   metrics = [],
-  challengeStartDate,
-  challengeEndDate,
+  challengeStartDateStr,
+  challengeEndDateStr,
 }: ProgressCalendarProps) {
+  // Parse date strings on client side for correct timezone handling
+  const challengeStartDate = parseLocalDate(challengeStartDateStr);
+  const challengeEndDate = challengeEndDateStr
+    ? parseLocalDate(challengeEndDateStr)
+    : new Date(2099, 11, 31);
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const monthStart = startOfMonth(currentMonth);

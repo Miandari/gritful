@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { format } from 'date-fns';
-import { parseLocalDate } from '@/lib/utils/dates';
+import { parseLocalDate, getLocalDateFromISO } from '@/lib/utils/dates';
 
 export const revalidate = 0;
 
@@ -86,7 +86,7 @@ export default async function ProgressPage({
   // Use parseLocalDate to correctly handle the start date in local timezone
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const challengeStartDate = parseLocalDate(challenge.starts_at.split('T')[0]);
+  const challengeStartDate = parseLocalDate(getLocalDateFromISO(challenge.starts_at));
   const totalDays = Math.ceil(
     (today.getTime() - challengeStartDate.getTime()) /
     (1000 * 60 * 60 * 24)
@@ -296,8 +296,8 @@ export default async function ProgressPage({
               entries={myEntries || []}
               periodicCompletions={myPeriodicCompletions || []}
               metrics={challenge.metrics || []}
-              challengeStartDate={challengeStartDate}
-              challengeEndDate={challenge.ends_at ? parseLocalDate(challenge.ends_at.split('T')[0]) : new Date(2099, 11, 31)}
+              challengeStartDateStr={getLocalDateFromISO(challenge.starts_at)}
+              challengeEndDateStr={challenge.ends_at ? getLocalDateFromISO(challenge.ends_at) : null}
             />
 
             {/* Additional Stats */}
@@ -369,8 +369,8 @@ export default async function ProgressPage({
               challengeId={challenge.id}
               challengeName={challenge.name}
               challengeCreatorId={challenge.creator_id}
-              challengeStartDate={challengeStartDate}
-              challengeEndDate={challenge.ends_at ? parseLocalDate(challenge.ends_at.split('T')[0]) : new Date(2099, 11, 31)}
+              challengeStartDateStr={getLocalDateFromISO(challenge.starts_at)}
+              challengeEndDateStr={challenge.ends_at ? getLocalDateFromISO(challenge.ends_at) : null}
               challengeMetrics={challenge.metrics || []}
             />
           </TabsContent>

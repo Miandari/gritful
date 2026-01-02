@@ -98,15 +98,10 @@ export function DateSelector({
 
   const allDays = [...paddedDays, ...monthDays];
 
-  const canNavigatePrev = () => {
-    const prevMonth = subDays(monthStart, 1);
-    return prevMonth >= challengeStartDate;
-  };
-
-  const canNavigateNext = () => {
-    const nextMonth = addDays(monthEnd, 1);
-    return nextMonth <= maxDate;
-  };
+  // Allow free navigation - users can browse any month
+  // Days outside the challenge period will just show as grey/unclickable
+  const canNavigatePrev = () => true;
+  const canNavigateNext = () => true;
 
   return (
     <Card className="max-w-[280px]">

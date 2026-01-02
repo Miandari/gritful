@@ -11,7 +11,7 @@ import { CreatorRibbon } from '@/components/challenges/CreatorBadge';
 import { Trophy, TrendingUp, Target, Infinity, Clock, UserPlus } from 'lucide-react';
 import { getChallengeState, ChallengeStateResult } from '@/lib/utils/challengeState';
 import { cn } from '@/lib/utils';
-import { parseLocalDate } from '@/lib/utils/dates';
+import { parseLocalDate, getLocalDateFromISO, getTodayDateString } from '@/lib/utils/dates';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -78,7 +78,7 @@ export default async function DashboardPage() {
   // Fetch today's entries for all active challenges
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const todayStr = today.toISOString().split('T')[0];
+  const todayStr = getTodayDateString();
 
   const { data: todayEntries } = await supabase
     .from('daily_entries')
@@ -108,7 +108,7 @@ export default async function DashboardPage() {
     .from('challenges')
     .select('*')
     .lte('starts_at', new Date().toISOString())
-    .or(`ends_at.is.null,ends_at.gte.${new Date().toISOString().split('T')[0]}`)
+    .or(`ends_at.is.null,ends_at.gte.${getTodayDateString()}`)
     .order('created_at', { ascending: false })
     .limit(10);
 
@@ -257,7 +257,7 @@ export default async function DashboardPage() {
                   // Use parseLocalDate for correct timezone handling
                   const today = new Date();
                   today.setHours(0, 0, 0, 0);
-                  const startDate = parseLocalDate(challenge.starts_at.split('T')[0]);
+                  const startDate = parseLocalDate(getLocalDateFromISO(challenge.starts_at));
 
                   const daysElapsed = Math.max(0, Math.floor(
                     (today.getTime() - startDate.getTime()) /

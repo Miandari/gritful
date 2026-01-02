@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Trophy, TrendingUp, Calendar } from 'lucide-react';
 import { ParticipantDetailModal } from './ParticipantDetailModal';
 import Link from 'next/link';
+import { parseLocalDate } from '@/lib/utils/dates';
 
 interface Participant {
   id: string;
@@ -29,8 +30,8 @@ interface ParticipantsLeaderboardProps {
   challengeId: string;
   challengeName: string;
   challengeCreatorId: string;
-  challengeStartDate: Date;
-  challengeEndDate: Date;
+  challengeStartDateStr: string;
+  challengeEndDateStr: string | null;
   challengeMetrics: any[];
 }
 
@@ -40,10 +41,15 @@ export function ParticipantsLeaderboard({
   challengeId,
   challengeName,
   challengeCreatorId,
-  challengeStartDate,
-  challengeEndDate,
+  challengeStartDateStr,
+  challengeEndDateStr,
   challengeMetrics
 }: ParticipantsLeaderboardProps) {
+  // Parse date strings on client side for correct timezone handling
+  const challengeStartDate = parseLocalDate(challengeStartDateStr);
+  const challengeEndDate = challengeEndDateStr
+    ? parseLocalDate(challengeEndDateStr)
+    : new Date(2099, 11, 31);
   const [selectedParticipant, setSelectedParticipant] = useState<Participant | null>(null);
 
   // Sort by total points, then by current streak

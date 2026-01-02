@@ -31,3 +31,21 @@ export function toLocalDateString(date: Date): string {
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
+
+/**
+ * Extract the local date string from an ISO timestamp
+ *
+ * IMPORTANT: Use this instead of `isoString.split('T')[0]` when you need
+ * the date in the user's local timezone. The split method gives you the
+ * UTC date, which can be off by a day depending on timezone.
+ *
+ * Example:
+ * - UTC timestamp: "2026-01-02T01:00:00Z" (Jan 2, 1 AM UTC)
+ * - In EST (UTC-5): This is actually Jan 1, 8 PM local
+ * - split('T')[0] returns "2026-01-02" ❌ (UTC date)
+ * - This function returns "2026-01-01" ✅ (local date)
+ */
+export function getLocalDateFromISO(isoString: string): string {
+  const date = new Date(isoString);
+  return toLocalDateString(date);
+}

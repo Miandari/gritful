@@ -1,6 +1,6 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { nanoid } from 'nanoid';
 
@@ -277,7 +277,10 @@ export async function regenerateInviteLink(
  * Does NOT require authentication
  */
 export async function getInviteLinkByToken(token: string) {
-  const supabase = await createClient();
+  // Use service role client to bypass RLS for invite link preview
+  // This allows viewing private challenge info via invite link
+  const supabase = createServiceRoleClient();
+  const userSupabase = await createClient();
 
   try {
     // Get the invite link
@@ -302,7 +305,7 @@ export async function getInviteLinkByToken(token: string) {
       return { success: false, error: 'This invite link has reached its maximum uses' };
     }
 
-    // Get challenge info
+    // Get challenge info (using service role to bypass RLS for private challenges)
     const { data: challenge, error: challengeError } = await supabase
       .from('challenges')
       .select(`
@@ -334,14 +337,15 @@ export async function getInviteLinkByToken(token: string) {
       .eq('challenge_id', link.challenge_id)
       .eq('status', 'active');
 
-    // Check if current user is already a member
+    // Check if current user is already a member (use user's client for auth)
     let isAlreadyMember = false;
     let hasPendingRequest = false;
     const {
       data: { user },
-    } = await supabase.auth.getUser();
+    } = await userSupabase.auth.getUser();
 
     if (user) {
+      // Use service role client for these queries to bypass RLS
       const { data: participation } = await supabase
         .from('challenge_participants')
         .select('id')

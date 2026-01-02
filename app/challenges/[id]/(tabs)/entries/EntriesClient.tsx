@@ -31,8 +31,8 @@ interface EntriesClientProps {
   entries: any[];
   onetimeCompletions: OnetimeCompletion[];
   periodicCompletions: PeriodicCompletion[];
-  challengeStartDate: Date;
-  challengeEndDate: Date;
+  challengeStartDateStr: string;
+  challengeEndDateStr: string | null;
 }
 
 export default function EntriesClient({
@@ -41,9 +41,14 @@ export default function EntriesClient({
   entries,
   onetimeCompletions,
   periodicCompletions,
-  challengeStartDate,
-  challengeEndDate,
+  challengeStartDateStr,
+  challengeEndDateStr,
 }: EntriesClientProps) {
+  // Parse date strings to Date objects on the client side for correct timezone handling
+  const challengeStartDate = parseLocalDate(challengeStartDateStr);
+  const challengeEndDate = challengeEndDateStr
+    ? parseLocalDate(challengeEndDateStr)
+    : new Date(2099, 11, 31); // Far future for ongoing challenges
   const searchParams = useSearchParams();
   const dateParam = searchParams.get('date');
 

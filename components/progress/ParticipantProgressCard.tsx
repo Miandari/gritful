@@ -41,8 +41,8 @@ interface ParticipantProgressCardProps {
   entries: ParticipantEntry[];
   periodicCompletions?: PeriodicCompletion[];
   metrics?: ChallengeMetric[];
-  challengeStartDate: Date;
-  challengeEndDate: Date;
+  challengeStartDateStr: string;
+  challengeEndDateStr: string | null;
   isCurrentUser: boolean;
   completedDays: number;
   totalDays: number;
@@ -53,8 +53,8 @@ export function ParticipantProgressCard({
   entries,
   periodicCompletions = [],
   metrics = [],
-  challengeStartDate,
-  challengeEndDate,
+  challengeStartDateStr,
+  challengeEndDateStr,
   isCurrentUser,
   completedDays,
   totalDays,
@@ -103,8 +103,8 @@ export function ParticipantProgressCard({
           entries={entries}
           periodicCompletions={periodicCompletions}
           metrics={metrics}
-          challengeStartDate={challengeStartDate}
-          challengeEndDate={challengeEndDate}
+          challengeStartDateStr={challengeStartDateStr}
+          challengeEndDateStr={challengeEndDateStr}
         />
       </CardContent>
     </Card>

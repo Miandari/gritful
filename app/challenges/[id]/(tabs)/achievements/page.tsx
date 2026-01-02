@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { AchievementGrid } from '@/components/achievements/AchievementGrid';
 import { calculateProgress } from '@/lib/achievements/checkAchievements';
 import type { Achievement, AchievementWithProgress, ParticipantStats } from '@/lib/achievements/types';
-import { parseLocalDate } from '@/lib/utils/dates';
+import { parseLocalDate, getLocalDateFromISO } from '@/lib/utils/dates';
 
 export default async function AchievementsPage({
   params,
@@ -161,8 +161,8 @@ async function getParticipantStats(
   let completionRate = 0;
   if (challenge && entries) {
     // Use parseLocalDate to correctly handle dates in local timezone
-    const startDate = parseLocalDate(challenge.starts_at.split('T')[0]);
-    const endDate = challenge.ends_at ? parseLocalDate(challenge.ends_at.split('T')[0]) : null;
+    const startDate = parseLocalDate(getLocalDateFromISO(challenge.starts_at));
+    const endDate = challenge.ends_at ? parseLocalDate(getLocalDateFromISO(challenge.ends_at)) : null;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const effectiveEnd = endDate && endDate < today ? endDate : today;

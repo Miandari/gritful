@@ -14,7 +14,7 @@ import { Infinity, Trophy, ChevronRight, Users } from 'lucide-react';
 import { AchievementBadge } from '@/components/achievements/AchievementBadge';
 import { calculateProgress } from '@/lib/achievements/checkAchievements';
 import type { Achievement, AchievementWithProgress, ParticipantStats, AchievementCategory } from '@/lib/achievements/types';
-import { parseLocalDate } from '@/lib/utils/dates';
+import { parseLocalDate, getLocalDateFromISO } from '@/lib/utils/dates';
 
 export default async function ChallengeOverviewPage({
   params
@@ -82,7 +82,7 @@ export default async function ChallengeOverviewPage({
       // Use parseLocalDate to correctly handle the start date in local timezone
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const startDate = parseLocalDate(challenge.starts_at.split('T')[0]);
+      const startDate = parseLocalDate(getLocalDateFromISO(challenge.starts_at));
       const totalDays = Math.ceil(
         (today.getTime() - startDate.getTime()) /
         (1000 * 60 * 60 * 24)
