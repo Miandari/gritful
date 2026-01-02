@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { BarChart3, Target } from 'lucide-react';
 import EntriesClient from './EntriesClient';
-import { getLocalDateFromISO } from '@/lib/utils/dates';
+// Note: Date conversion happens on client side for correct user timezone
 
 export const revalidate = 0;
 
@@ -139,8 +139,8 @@ export default async function AllEntriesPage({
           entries={entries || []}
           onetimeCompletions={onetimeCompletions || []}
           periodicCompletions={periodicCompletions || []}
-          challengeStartDateStr={getLocalDateFromISO(challenge.starts_at)}
-          challengeEndDateStr={challenge.ends_at ? getLocalDateFromISO(challenge.ends_at) : null}
+          challengeStartDateISO={challenge.starts_at}
+          challengeEndDateISO={challenge.ends_at}
         />
       </div>
     </div>

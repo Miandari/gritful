@@ -8,7 +8,7 @@ import { format } from 'date-fns';
 import { CheckCircle, XCircle, Clock } from 'lucide-react';
 import DailyEntryForm from '@/components/daily-entry/DailyEntryForm';
 import { DateSelector } from '@/components/challenges/DateSelector';
-import { parseLocalDate } from '@/lib/utils/dates';
+import { parseLocalDate, getLocalDateFromISO } from '@/lib/utils/dates';
 
 interface OnetimeCompletion {
   task_id: string;
@@ -31,8 +31,8 @@ interface EntriesClientProps {
   entries: any[];
   onetimeCompletions: OnetimeCompletion[];
   periodicCompletions: PeriodicCompletion[];
-  challengeStartDateStr: string;
-  challengeEndDateStr: string | null;
+  challengeStartDateISO: string;  // Raw ISO timestamp from database
+  challengeEndDateISO: string | null;  // Raw ISO timestamp from database
 }
 
 export default function EntriesClient({
@@ -41,13 +41,14 @@ export default function EntriesClient({
   entries,
   onetimeCompletions,
   periodicCompletions,
-  challengeStartDateStr,
-  challengeEndDateStr,
+  challengeStartDateISO,
+  challengeEndDateISO,
 }: EntriesClientProps) {
-  // Parse date strings to Date objects on the client side for correct timezone handling
-  const challengeStartDate = parseLocalDate(challengeStartDateStr);
-  const challengeEndDate = challengeEndDateStr
-    ? parseLocalDate(challengeEndDateStr)
+  // Convert ISO timestamps to local dates ON THE CLIENT for correct user timezone
+  // This must happen on client because server (Vercel) runs in UTC
+  const challengeStartDate = parseLocalDate(getLocalDateFromISO(challengeStartDateISO));
+  const challengeEndDate = challengeEndDateISO
+    ? parseLocalDate(getLocalDateFromISO(challengeEndDateISO))
     : new Date(2099, 11, 31); // Far future for ongoing challenges
   const searchParams = useSearchParams();
   const dateParam = searchParams.get('date');

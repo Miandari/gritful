@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Trophy, TrendingUp, Calendar } from 'lucide-react';
 import { ParticipantDetailModal } from './ParticipantDetailModal';
 import Link from 'next/link';
-import { parseLocalDate } from '@/lib/utils/dates';
+import { parseLocalDate, getLocalDateFromISO } from '@/lib/utils/dates';
 
 interface Participant {
   id: string;
@@ -30,8 +30,8 @@ interface ParticipantsLeaderboardProps {
   challengeId: string;
   challengeName: string;
   challengeCreatorId: string;
-  challengeStartDateStr: string;
-  challengeEndDateStr: string | null;
+  challengeStartDateISO: string;  // Raw ISO timestamp from database
+  challengeEndDateISO: string | null;  // Raw ISO timestamp from database
   challengeMetrics: any[];
 }
 
@@ -41,14 +41,14 @@ export function ParticipantsLeaderboard({
   challengeId,
   challengeName,
   challengeCreatorId,
-  challengeStartDateStr,
-  challengeEndDateStr,
+  challengeStartDateISO,
+  challengeEndDateISO,
   challengeMetrics
 }: ParticipantsLeaderboardProps) {
-  // Parse date strings on client side for correct timezone handling
-  const challengeStartDate = parseLocalDate(challengeStartDateStr);
-  const challengeEndDate = challengeEndDateStr
-    ? parseLocalDate(challengeEndDateStr)
+  // Convert ISO timestamps to local dates ON THE CLIENT for correct user timezone
+  const challengeStartDate = parseLocalDate(getLocalDateFromISO(challengeStartDateISO));
+  const challengeEndDate = challengeEndDateISO
+    ? parseLocalDate(getLocalDateFromISO(challengeEndDateISO))
     : new Date(2099, 11, 31);
   const [selectedParticipant, setSelectedParticipant] = useState<Participant | null>(null);
 

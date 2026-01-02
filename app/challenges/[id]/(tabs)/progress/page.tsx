@@ -296,8 +296,8 @@ export default async function ProgressPage({
               entries={myEntries || []}
               periodicCompletions={myPeriodicCompletions || []}
               metrics={challenge.metrics || []}
-              challengeStartDateStr={getLocalDateFromISO(challenge.starts_at)}
-              challengeEndDateStr={challenge.ends_at ? getLocalDateFromISO(challenge.ends_at) : null}
+              challengeStartDateISO={challenge.starts_at}
+              challengeEndDateISO={challenge.ends_at}
             />
 
             {/* Additional Stats */}
@@ -369,8 +369,8 @@ export default async function ProgressPage({
               challengeId={challenge.id}
               challengeName={challenge.name}
               challengeCreatorId={challenge.creator_id}
-              challengeStartDateStr={getLocalDateFromISO(challenge.starts_at)}
-              challengeEndDateStr={challenge.ends_at ? getLocalDateFromISO(challenge.ends_at) : null}
+              challengeStartDateISO={challenge.starts_at}
+              challengeEndDateISO={challenge.ends_at}
               challengeMetrics={challenge.metrics || []}
             />
           </TabsContent>
