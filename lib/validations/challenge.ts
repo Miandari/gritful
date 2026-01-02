@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { parseLocalDate } from '@/lib/utils/dates';
 
 // Metric validation schemas
 export const metricConfigSchema = z.object({
@@ -52,7 +53,8 @@ export const challengeFormSchema = z.object({
   // Flag to indicate this is an ongoing challenge (no end date)
   is_ongoing: z.boolean().default(false),
   starts_at: z.string().refine((date) => {
-    const startDate = new Date(date);
+    // Use parseLocalDate for correct timezone handling
+    const startDate = parseLocalDate(date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return startDate >= today;

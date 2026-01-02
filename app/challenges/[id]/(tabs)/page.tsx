@@ -14,6 +14,7 @@ import { Infinity, Trophy, ChevronRight, Users } from 'lucide-react';
 import { AchievementBadge } from '@/components/achievements/AchievementBadge';
 import { calculateProgress } from '@/lib/achievements/checkAchievements';
 import type { Achievement, AchievementWithProgress, ParticipantStats, AchievementCategory } from '@/lib/achievements/types';
+import { parseLocalDate } from '@/lib/utils/dates';
 
 export default async function ChallengeOverviewPage({
   params
@@ -78,10 +79,14 @@ export default async function ChallengeOverviewPage({
 
       // Calculate statistics
       const completedDays = myEntries.filter(e => e.is_completed).length;
+      // Use parseLocalDate to correctly handle the start date in local timezone
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const startDate = parseLocalDate(challenge.starts_at.split('T')[0]);
       const totalDays = Math.ceil(
-        (new Date().getTime() - new Date(challenge.starts_at).getTime()) /
+        (today.getTime() - startDate.getTime()) /
         (1000 * 60 * 60 * 24)
-      );
+      ) + 1; // +1 because we count the start day as day 1
       // For ongoing challenges, use totalDays directly; for fixed duration, cap at duration_days
       const isOngoing = challenge.ends_at === null;
       const maxDays = isOngoing

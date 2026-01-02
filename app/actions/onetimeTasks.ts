@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { calculateMetricPoints } from '@/lib/utils/scoring';
 import type { OnetimeTaskCompletion } from '@/lib/validations/challenge';
+import { parseLocalDate } from '@/lib/utils/dates';
 
 interface SaveOnetimeTaskData {
   participantId: string;
@@ -50,10 +51,15 @@ export async function saveOnetimeTaskCompletion(data: SaveOnetimeTaskData) {
       return { success: false, error: 'Challenge not found' };
     }
 
-    // Check if challenge has ended
-    const challengeEnd = new Date(challenge.ends_at);
-    if (new Date() > challengeEnd) {
-      return { success: false, error: 'Challenge has ended' };
+    // Check if challenge has ended (use parseLocalDate for correct timezone handling)
+    if (challenge.ends_at) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const challengeEnd = parseLocalDate(challenge.ends_at.split('T')[0]);
+      challengeEnd.setHours(23, 59, 59, 999); // End of day
+      if (today > challengeEnd) {
+        return { success: false, error: 'Challenge has ended' };
+      }
     }
 
     // Find the task in the challenge metrics
@@ -313,9 +319,13 @@ export async function addTaskToChallenge(
       return { success: false, error: 'Only the challenge creator can add tasks' };
     }
 
-    // Validate that task ends_at doesn't exceed challenge ends_at
-    const challengeEndDate = new Date(challenge.ends_at);
-    let taskEndsAt = task.ends_at ? new Date(task.ends_at) : challengeEndDate;
+    // Validate that task ends_at doesn't exceed challenge ends_at (use parseLocalDate for correct timezone)
+    const challengeEndDate = challenge.ends_at
+      ? parseLocalDate(challenge.ends_at.split('T')[0])
+      : new Date(2099, 11, 31); // Far future for ongoing challenges
+    let taskEndsAt = task.ends_at
+      ? parseLocalDate(task.ends_at.split('T')[0])
+      : challengeEndDate;
 
     if (taskEndsAt > challengeEndDate) {
       taskEndsAt = challengeEndDate;
@@ -433,11 +443,11 @@ export async function batchAddTasks(
       return { success: false, count: 0, error: 'Only the challenge creator can add tasks' };
     }
 
-    // Validate deadline doesn't exceed challenge end
+    // Validate deadline doesn't exceed challenge end (use parseLocalDate for correct timezone)
     let taskDeadline = deadline;
     if (deadline && challenge.ends_at) {
-      const deadlineDate = new Date(deadline);
-      const challengeEndDate = new Date(challenge.ends_at);
+      const deadlineDate = parseLocalDate(deadline.split('T')[0]);
+      const challengeEndDate = parseLocalDate(challenge.ends_at.split('T')[0]);
       if (deadlineDate > challengeEndDate) {
         taskDeadline = challenge.ends_at;
       }

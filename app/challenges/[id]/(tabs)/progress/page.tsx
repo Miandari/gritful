@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { format } from 'date-fns';
+import { parseLocalDate } from '@/lib/utils/dates';
 
 export const revalidate = 0;
 
@@ -82,10 +83,14 @@ export default async function ProgressPage({
 
   // Calculate my statistics
   const myCompletedDays = myEntries?.filter(e => e.is_completed).length || 0;
+  // Use parseLocalDate to correctly handle the start date in local timezone
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const challengeStartDate = parseLocalDate(challenge.starts_at.split('T')[0]);
   const totalDays = Math.ceil(
-    (new Date().getTime() - new Date(challenge.starts_at).getTime()) /
+    (today.getTime() - challengeStartDate.getTime()) /
     (1000 * 60 * 60 * 24)
-  );
+  ) + 1; // +1 because we count the start day as day 1
   const maxDays = Math.min(totalDays, challenge.duration_days);
 
   // Fetch all participants (without join to avoid schema cache issues)
@@ -291,8 +296,8 @@ export default async function ProgressPage({
               entries={myEntries || []}
               periodicCompletions={myPeriodicCompletions || []}
               metrics={challenge.metrics || []}
-              challengeStartDate={new Date(challenge.starts_at)}
-              challengeEndDate={new Date(challenge.ends_at)}
+              challengeStartDate={challengeStartDate}
+              challengeEndDate={challenge.ends_at ? parseLocalDate(challenge.ends_at.split('T')[0]) : new Date(2099, 11, 31)}
             />
 
             {/* Additional Stats */}
@@ -364,8 +369,8 @@ export default async function ProgressPage({
               challengeId={challenge.id}
               challengeName={challenge.name}
               challengeCreatorId={challenge.creator_id}
-              challengeStartDate={new Date(challenge.starts_at)}
-              challengeEndDate={new Date(challenge.ends_at)}
+              challengeStartDate={challengeStartDate}
+              challengeEndDate={challenge.ends_at ? parseLocalDate(challenge.ends_at.split('T')[0]) : new Date(2099, 11, 31)}
               challengeMetrics={challenge.metrics || []}
             />
           </TabsContent>

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { BarChart3, Target } from 'lucide-react';
 import EntriesClient from './EntriesClient';
+import { parseLocalDate } from '@/lib/utils/dates';
 
 export const revalidate = 0;
 
@@ -138,8 +139,8 @@ export default async function AllEntriesPage({
           entries={entries || []}
           onetimeCompletions={onetimeCompletions || []}
           periodicCompletions={periodicCompletions || []}
-          challengeStartDate={new Date(challenge.starts_at)}
-          challengeEndDate={new Date(challenge.ends_at)}
+          challengeStartDate={parseLocalDate(challenge.starts_at.split('T')[0])}
+          challengeEndDate={challenge.ends_at ? parseLocalDate(challenge.ends_at.split('T')[0]) : new Date(2099, 11, 31)}
         />
       </div>
     </div>

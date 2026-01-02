@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { AchievementGrid } from '@/components/achievements/AchievementGrid';
 import { calculateProgress } from '@/lib/achievements/checkAchievements';
 import type { Achievement, AchievementWithProgress, ParticipantStats } from '@/lib/achievements/types';
+import { parseLocalDate } from '@/lib/utils/dates';
 
 export default async function AchievementsPage({
   params,
@@ -159,10 +160,12 @@ async function getParticipantStats(
 
   let completionRate = 0;
   if (challenge && entries) {
-    const startDate = new Date(challenge.starts_at);
-    const endDate = challenge.ends_at ? new Date(challenge.ends_at) : new Date();
+    // Use parseLocalDate to correctly handle dates in local timezone
+    const startDate = parseLocalDate(challenge.starts_at.split('T')[0]);
+    const endDate = challenge.ends_at ? parseLocalDate(challenge.ends_at.split('T')[0]) : null;
     const today = new Date();
-    const effectiveEnd = endDate < today ? endDate : today;
+    today.setHours(0, 0, 0, 0);
+    const effectiveEnd = endDate && endDate < today ? endDate : today;
 
     const totalDays = Math.max(
       1,

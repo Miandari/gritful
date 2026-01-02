@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Calendar, CheckCircle, XCircle, ArrowUpRight, Clock, Infinity } from 'lucide-react';
 import { format } from 'date-fns';
-import { getTodayDateString } from '@/lib/utils/dates';
+import { getTodayDateString, parseLocalDate } from '@/lib/utils/dates';
 import Link from 'next/link';
 import DailyEntryForm from '@/components/daily-entry/DailyEntryForm';
 import { getChallengeState, ChallengeStateResult } from '@/lib/utils/challengeState';
@@ -160,8 +160,12 @@ export default async function TodayPage() {
           const challengeState = challenge.challengeState as ChallengeStateResult;
           const isGracePeriod = challengeState?.state === 'grace_period';
           const isOngoing = challenge.ends_at === null;
+          // Use parseLocalDate to correctly handle the start date in local timezone
+          const todayMidnight = new Date();
+          todayMidnight.setHours(0, 0, 0, 0);
+          const challengeStart = parseLocalDate(challenge.starts_at.split('T')[0]);
           const daysElapsed = Math.floor(
-            (new Date().getTime() - new Date(challenge.starts_at).getTime()) /
+            (todayMidnight.getTime() - challengeStart.getTime()) /
               (1000 * 60 * 60 * 24)
           );
 

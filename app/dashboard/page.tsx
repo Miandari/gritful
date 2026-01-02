@@ -11,6 +11,7 @@ import { CreatorRibbon } from '@/components/challenges/CreatorBadge';
 import { Trophy, TrendingUp, Target, Infinity, Clock, UserPlus } from 'lucide-react';
 import { getChallengeState, ChallengeStateResult } from '@/lib/utils/challengeState';
 import { cn } from '@/lib/utils';
+import { parseLocalDate } from '@/lib/utils/dates';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -253,10 +254,10 @@ export default async function DashboardPage() {
                   const challengeState = participation.challengeState as ChallengeStateResult;
                   if (!challenge) return null;
 
+                  // Use parseLocalDate for correct timezone handling
                   const today = new Date();
                   today.setHours(0, 0, 0, 0);
-                  const startDate = new Date(challenge.starts_at);
-                  startDate.setHours(0, 0, 0, 0);
+                  const startDate = parseLocalDate(challenge.starts_at.split('T')[0]);
 
                   const daysElapsed = Math.max(0, Math.floor(
                     (today.getTime() - startDate.getTime()) /

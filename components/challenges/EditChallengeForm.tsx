@@ -13,6 +13,7 @@ import { recalculateAllPoints } from '@/app/actions/recalculatePoints';
 import { updateChallengeSettings } from '@/app/actions/updateChallenge';
 import { MetricFormData } from '@/lib/validations/challenge';
 import { getChallengeState } from '@/lib/utils/challengeState';
+import { parseLocalDate } from '@/lib/utils/dates';
 
 interface EditChallengeFormProps {
   challenge: any;
@@ -49,13 +50,13 @@ export default function EditChallengeForm({ challenge }: EditChallengeFormProps)
 
   const canModifyDuration = challengeState.state === 'active' || challengeState.state === 'ongoing' || challengeState.state === 'upcoming';
 
-  // Calculate duration in days
+  // Calculate duration in days (use parseLocalDate for correct timezone handling)
   const calculatedDuration = useMemo(() => {
     if (isOngoing || !endsAt) return null;
-    const start = new Date(challenge.starts_at);
-    const end = new Date(endsAt);
+    const start = parseLocalDate(challenge.starts_at.split('T')[0]);
+    const end = parseLocalDate(endsAt.split('T')[0]);
     const diffTime = end.getTime() - start.getTime();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 to include both start and end days
   }, [challenge.starts_at, endsAt, isOngoing]);
 
   // Get today's date for min value

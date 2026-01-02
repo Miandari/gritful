@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { parseLocalDate } from '@/lib/utils/dates';
 
 interface UpdateChallengeData {
   challengeId: string;
@@ -100,11 +101,11 @@ export async function updateChallengeSettings(data: UpdateChallengeData) {
         // Converting to ongoing challenge
         updateData.duration_days = null;
       } else {
-        // Calculate duration_days from starts_at to new ends_at
-        const startDate = new Date(challenge.starts_at);
-        const endDate = new Date(data.ends_at);
+        // Calculate duration_days from starts_at to new ends_at (use parseLocalDate for correct timezone)
+        const startDate = parseLocalDate(challenge.starts_at.split('T')[0]);
+        const endDate = parseLocalDate(data.ends_at.split('T')[0]);
         const diffTime = endDate.getTime() - startDate.getTime();
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 to include both days
         updateData.duration_days = diffDays;
       }
     }
