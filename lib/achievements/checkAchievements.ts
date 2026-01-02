@@ -2,6 +2,9 @@ import { createClient } from '@/lib/supabase/server';
 import type { Achievement, ParticipantStats, EarnedAchievement } from './types';
 import { parseLocalDate, getLocalDateFromISO } from '@/lib/utils/dates';
 
+// Re-export calculateProgress from the client-safe module for backward compatibility
+export { calculateProgress } from './progress';
+
 /**
  * Check and award achievements for a participant after an action (e.g., entry submission)
  * Returns newly earned achievements for popup display
@@ -227,41 +230,3 @@ async function postAchievementToFeed(
     });
 }
 
-/**
- * Calculate progress toward an achievement
- */
-export function calculateProgress(
-  achievement: Achievement,
-  stats: ParticipantStats
-): { current: number; target: number } {
-  const target = achievement.trigger_value;
-
-  switch (achievement.trigger_type) {
-    case 'streak_days':
-      return { current: Math.max(stats.currentStreak, stats.longestStreak), target };
-
-    case 'total_points':
-      return { current: stats.totalPoints, target };
-
-    case 'entries_logged':
-      return { current: stats.entriesCount, target };
-
-    case 'perfect_days':
-      return { current: stats.perfectDays, target };
-
-    case 'completion_rate':
-      return { current: stats.completionRate, target };
-
-    case 'early_entries':
-      return { current: stats.earlyEntries, target };
-
-    case 'late_entries':
-      return { current: stats.lateEntries, target };
-
-    case 'challenge_complete':
-      return { current: stats.challengeComplete ? 1 : 0, target: 1 };
-
-    default:
-      return { current: 0, target };
-  }
-}

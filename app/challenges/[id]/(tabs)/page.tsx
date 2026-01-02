@@ -14,7 +14,7 @@ import { Infinity, Trophy, ChevronRight, Users } from 'lucide-react';
 import { AchievementBadge } from '@/components/achievements/AchievementBadge';
 import { calculateProgress } from '@/lib/achievements/checkAchievements';
 import type { Achievement, AchievementWithProgress, ParticipantStats, AchievementCategory } from '@/lib/achievements/types';
-import { parseLocalDate, getLocalDateFromISO } from '@/lib/utils/dates';
+import { ChallengeStatsSection } from '@/components/challenges/ChallengeStatsSection';
 
 export default async function ChallengeOverviewPage({
   params
@@ -77,29 +77,17 @@ export default async function ChallengeOverviewPage({
 
       myEntries = entries || [];
 
-      // Calculate statistics
+      // Calculate statistics (totalDays and completionRate are calculated on client for correct timezone)
       const completedDays = myEntries.filter(e => e.is_completed).length;
-      // Use parseLocalDate to correctly handle the start date in local timezone
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const startDate = parseLocalDate(getLocalDateFromISO(challenge.starts_at));
-      const totalDays = Math.ceil(
-        (today.getTime() - startDate.getTime()) /
-        (1000 * 60 * 60 * 24)
-      ) + 1; // +1 because we count the start day as day 1
-      // For ongoing challenges, use totalDays directly; for fixed duration, cap at duration_days
-      const isOngoing = challenge.ends_at === null;
-      const maxDays = isOngoing
-        ? Math.max(totalDays, 0)
-        : Math.min(Math.max(totalDays, 0), challenge.duration_days || 0);
 
       myStats = {
         currentStreak: myParticipation.current_streak || 0,
         longestStreak: myParticipation.longest_streak || 0,
         totalPoints: myParticipation.total_points || 0,
         completedDays,
-        totalDays: maxDays,
-        completionRate: maxDays > 0 ? Math.round((completedDays / maxDays) * 100) : 0
+        // Note: totalDays and completionRate are calculated client-side in ChallengeStatsSection
+        totalDays: 0,
+        completionRate: 0
       };
     }
   }
@@ -206,43 +194,15 @@ export default async function ChallengeOverviewPage({
             </div>
           </div>
 
-          {/* Quick Stats Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-sm text-muted-foreground">Completion</div>
-                <div className="text-2xl font-bold">{myStats.completionRate}%</div>
-                <div className="text-xs text-muted-foreground">{myStats.completedDays}/{myStats.totalDays} days</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-sm text-muted-foreground">Longest Streak</div>
-                <div className="text-2xl font-bold">{myStats.longestStreak}</div>
-                <div className="text-xs text-muted-foreground">personal best</div>
-              </CardContent>
-            </Card>
-            {challenge.ends_at === null ? (
-              <Card>
-                <CardContent className="p-4">
-                  <div className="text-sm text-muted-foreground">Active Days</div>
-                  <div className="text-2xl font-bold flex items-center gap-1">
-                    <Infinity className="h-5 w-5" />
-                    {myStats.totalDays}
-                  </div>
-                  <div className="text-xs text-muted-foreground">ongoing</div>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card>
-                <CardContent className="p-4">
-                  <div className="text-sm text-muted-foreground">Days Left</div>
-                  <div className="text-2xl font-bold">{Math.max(0, (challenge.duration_days || 0) - myStats.totalDays)}</div>
-                  <div className="text-xs text-muted-foreground">to complete</div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+          {/* Quick Stats Grid - Calculated on client for correct timezone */}
+          <ChallengeStatsSection
+            startsAt={challenge.starts_at}
+            endsAt={challenge.ends_at}
+            durationDays={challenge.duration_days}
+            completedDays={myStats.completedDays}
+            currentStreak={myStats.currentStreak}
+            longestStreak={myStats.longestStreak}
+          />
 
           {/* Achievements Preview */}
           {totalAchievements > 0 && (

@@ -2,20 +2,37 @@
 
 import { Flame, Trophy, TrendingUp, Calendar } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { parseLocalDate, getLocalDateFromISO } from '@/lib/utils/dates';
 
 interface StreakDisplayProps {
   currentStreak: number;
   longestStreak: number;
-  totalDays: number;
   completedDays: number;
+  startsAt: string;
+  endsAt: string | null;
+  durationDays: number | null;
 }
 
 export function StreakDisplay({
   currentStreak,
   longestStreak,
-  totalDays,
-  completedDays
+  completedDays,
+  startsAt,
+  endsAt,
+  durationDays,
 }: StreakDisplayProps) {
+  // Calculate totalDays on CLIENT for correct timezone
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const challengeStartDate = parseLocalDate(getLocalDateFromISO(startsAt));
+  const rawTotalDays = Math.ceil(
+    (today.getTime() - challengeStartDate.getTime()) / (1000 * 60 * 60 * 24)
+  ) + 1;
+  const isOngoing = endsAt === null;
+  const totalDays = isOngoing
+    ? Math.max(rawTotalDays, 0)
+    : Math.min(Math.max(rawTotalDays, 0), durationDays || 0);
+
   const completionRate = totalDays > 0 ? Math.round((completedDays / totalDays) * 100) : 0;
 
   return (

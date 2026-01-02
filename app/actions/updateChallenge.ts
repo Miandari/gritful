@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { parseLocalDate, getLocalDateFromISO } from '@/lib/utils/dates';
+import { parseLocalDate, getLocalDateFromISO, getLocalDateFromISOWithTimezone, getTodayDateStringWithTimezone } from '@/lib/utils/dates';
 
 interface UpdateChallengeData {
   challengeId: string;
@@ -13,6 +13,7 @@ interface UpdateChallengeData {
   perfect_day_bonus_points: number;
   grace_period_days?: number;
   ends_at?: string | null; // ISO date string (YYYY-MM-DD) or null for ongoing
+  timezone?: string; // Optional timezone for correct date handling
 }
 
 export async function updateChallengeSettings(data: UpdateChallengeData) {
@@ -44,36 +45,38 @@ export async function updateChallengeSettings(data: UpdateChallengeData) {
 
     // Validate ends_at changes if provided
     if (data.ends_at !== undefined) {
-      // Check if challenge is active (not ended or in grace period)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      // Get today's date string in user's timezone (or use server default)
+      const todayStr = data.timezone
+        ? getTodayDateStringWithTimezone(data.timezone)
+        : getLocalDateFromISO(new Date().toISOString());
 
       const hasEnded = challenge.ends_at !== null || challenge.ended_at !== null;
       if (hasEnded) {
         const effectiveEndDateStr = challenge.ended_at
-          ? getLocalDateFromISO(challenge.ended_at)
-          : challenge.ends_at ? getLocalDateFromISO(challenge.ends_at) : null;
-        const endDate = effectiveEndDateStr ? parseLocalDate(effectiveEndDateStr) : null;
-        if (endDate) endDate.setHours(0, 0, 0, 0);
+          ? (data.timezone ? getLocalDateFromISOWithTimezone(challenge.ended_at, data.timezone) : getLocalDateFromISO(challenge.ended_at))
+          : challenge.ends_at ? (data.timezone ? getLocalDateFromISOWithTimezone(challenge.ends_at, data.timezone) : getLocalDateFromISO(challenge.ends_at)) : null;
 
-        // If end date is in the past, challenge has ended
-        if (endDate && endDate < today) {
+        // Compare date strings directly (YYYY-MM-DD format)
+        if (effectiveEndDateStr && effectiveEndDateStr < todayStr) {
           return { success: false, error: 'Cannot modify duration of an ended challenge' };
         }
       }
 
       // If setting a new end date (not null), validate it
       if (data.ends_at !== null) {
-        const newEndDate = new Date(data.ends_at);
-        newEndDate.setHours(0, 0, 0, 0);
-        const startDate = new Date(challenge.starts_at);
-        startDate.setHours(0, 0, 0, 0);
+        // Parse the new end date (it may be YYYY-MM-DD or ISO format)
+        const newEndDateStr = data.ends_at.includes('T')
+          ? (data.timezone ? getLocalDateFromISOWithTimezone(data.ends_at, data.timezone) : getLocalDateFromISO(data.ends_at))
+          : data.ends_at;
+        const startDateStr = data.timezone
+          ? getLocalDateFromISOWithTimezone(challenge.starts_at, data.timezone)
+          : getLocalDateFromISO(challenge.starts_at);
 
-        if (newEndDate < today) {
+        if (newEndDateStr < todayStr) {
           return { success: false, error: 'End date cannot be in the past' };
         }
 
-        if (newEndDate <= startDate) {
+        if (newEndDateStr <= startDateStr) {
           return { success: false, error: 'End date must be after start date' };
         }
       }
@@ -101,9 +104,15 @@ export async function updateChallengeSettings(data: UpdateChallengeData) {
         // Converting to ongoing challenge
         updateData.duration_days = null;
       } else {
-        // Calculate duration_days from starts_at to new ends_at (use parseLocalDate for correct timezone)
-        const startDate = parseLocalDate(getLocalDateFromISO(challenge.starts_at));
-        const endDate = parseLocalDate(data.ends_at.includes('T') ? getLocalDateFromISO(data.ends_at) : data.ends_at);
+        // Calculate duration_days from starts_at to new ends_at
+        const startDateStr = data.timezone
+          ? getLocalDateFromISOWithTimezone(challenge.starts_at, data.timezone)
+          : getLocalDateFromISO(challenge.starts_at);
+        const endDateStr = data.ends_at.includes('T')
+          ? (data.timezone ? getLocalDateFromISOWithTimezone(data.ends_at, data.timezone) : getLocalDateFromISO(data.ends_at))
+          : data.ends_at;
+        const startDate = parseLocalDate(startDateStr);
+        const endDate = parseLocalDate(endDateStr);
         const diffTime = endDate.getTime() - startDate.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 to include both days
         updateData.duration_days = diffDays;

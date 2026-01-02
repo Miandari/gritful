@@ -2,8 +2,12 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { getTodayDateStringWithTimezone, getTodayDateString } from '@/lib/utils/dates';
 
-export async function endChallenge(challengeId: string): Promise<{ success: boolean; error?: string }> {
+export async function endChallenge(
+  challengeId: string,
+  timezone?: string
+): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient();
 
   const {
@@ -34,8 +38,10 @@ export async function endChallenge(challengeId: string): Promise<{ success: bool
     return { success: false, error: 'This challenge already has an end date' };
   }
 
-  // Set ends_at to today to archive it
-  const today = new Date().toISOString().split('T')[0];
+  // Set ends_at to today to archive it (use timezone-aware date if provided)
+  const today = timezone
+    ? getTodayDateStringWithTimezone(timezone)
+    : getTodayDateString();
 
   const { error } = await supabase
     .from('challenges')

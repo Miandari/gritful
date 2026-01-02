@@ -4,12 +4,13 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { calculateMetricPoints } from '@/lib/utils/scoring';
 import type { OnetimeTaskCompletion } from '@/lib/validations/challenge';
-import { parseLocalDate, getLocalDateFromISO } from '@/lib/utils/dates';
+import { parseLocalDate, getLocalDateFromISO, getLocalDateFromISOWithTimezone, getTodayDateStringWithTimezone } from '@/lib/utils/dates';
 
 interface SaveOnetimeTaskData {
   participantId: string;
   taskId: string;
   value: any;
+  timezone?: string; // Optional timezone for correct date handling
 }
 
 /**
@@ -51,13 +52,18 @@ export async function saveOnetimeTaskCompletion(data: SaveOnetimeTaskData) {
       return { success: false, error: 'Challenge not found' };
     }
 
-    // Check if challenge has ended (use parseLocalDate for correct timezone handling)
+    // Check if challenge has ended (use timezone-aware date handling)
     if (challenge.ends_at) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const challengeEnd = parseLocalDate(getLocalDateFromISO(challenge.ends_at));
-      challengeEnd.setHours(23, 59, 59, 999); // End of day
-      if (today > challengeEnd) {
+      // Get today's date string in user's timezone (or use server default)
+      const todayStr = data.timezone
+        ? getTodayDateStringWithTimezone(data.timezone)
+        : getLocalDateFromISO(new Date().toISOString());
+      const challengeEndStr = data.timezone
+        ? getLocalDateFromISOWithTimezone(challenge.ends_at, data.timezone)
+        : getLocalDateFromISO(challenge.ends_at);
+
+      // Compare date strings directly (YYYY-MM-DD format)
+      if (todayStr > challengeEndStr) {
         return { success: false, error: 'Challenge has ended' };
       }
     }

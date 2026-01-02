@@ -1,9 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import { AchievementGrid } from '@/components/achievements/AchievementGrid';
-import { calculateProgress } from '@/lib/achievements/checkAchievements';
-import type { Achievement, AchievementWithProgress, ParticipantStats } from '@/lib/achievements/types';
-import { parseLocalDate, getLocalDateFromISO } from '@/lib/utils/dates';
+import { AchievementsContent } from '@/components/achievements/AchievementsContent';
+import type { Achievement, ParticipantStats } from '@/lib/achievements/types';
 
 export default async function AchievementsPage({
   params,
@@ -34,6 +32,17 @@ export default async function AchievementsPage({
     redirect(`/challenges/${challengeId}`);
   }
 
+  // Get challenge data for timezone-safe date handling on client
+  const { data: challenge } = await supabase
+    .from('challenges')
+    .select('starts_at, ends_at, duration_days')
+    .eq('id', challengeId)
+    .single();
+
+  if (!challenge) {
+    redirect(`/challenges/${challengeId}`);
+  }
+
   // Get all achievements for this challenge
   const { data: achievements } = await supabase.rpc('get_challenge_achievements', {
     p_challenge_id: challengeId,
@@ -45,84 +54,42 @@ export default async function AchievementsPage({
     .select('achievement_id, earned_at')
     .eq('participant_id', participant.id);
 
-  const earnedMap = new Map(
-    (earnedRecords || []).map(e => [e.achievement_id, e.earned_at])
-  );
+  // Convert to Record for serialization
+  const earnedMap: Record<string, string> = {};
+  (earnedRecords || []).forEach(e => {
+    earnedMap[e.achievement_id] = e.earned_at;
+  });
 
-  // Get participant stats for progress calculation
-  const stats = await getParticipantStats(supabase, participant.id, challengeId);
+  // Get participant stats (excluding completionRate which will be calculated on client)
+  const baseStats = await getBaseParticipantStats(supabase, participant.id, participant);
 
-  // Build achievements with progress
-  const achievementsWithProgress: AchievementWithProgress[] = (achievements || []).map(
-    (achievement: Achievement) => {
-      const earned = earnedMap.has(achievement.id);
-      const earned_at = earnedMap.get(achievement.id);
-      const progress = !earned ? calculateProgress(achievement, stats) : undefined;
+  // Get entry stats for completion rate calculation on client
+  const { data: entries } = await supabase
+    .from('daily_entries')
+    .select('is_completed')
+    .eq('participant_id', participant.id);
 
-      return {
-        ...achievement,
-        earned,
-        earned_at,
-        progress,
-      };
-    }
-  );
-
-  // Sort by display_order
-  achievementsWithProgress.sort((a, b) => a.display_order - b.display_order);
-
-  const earnedCount = achievementsWithProgress.filter(a => a.earned).length;
-  const totalCount = achievementsWithProgress.length;
+  const completedEntriesCount = entries?.filter(e => e.is_completed).length || 0;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold">Your Achievements</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            {earnedCount} of {totalCount} earned
-          </p>
-        </div>
-      </div>
-
-      {/* Achievement Grid */}
-      <AchievementGrid
-        achievements={achievementsWithProgress}
-        showProgress={true}
-        size="md"
-      />
-    </div>
+    <AchievementsContent
+      achievements={achievements || []}
+      earnedMap={earnedMap}
+      baseStats={baseStats}
+      completedEntriesCount={completedEntriesCount}
+      startsAt={challenge.starts_at}
+      endsAt={challenge.ends_at}
+      durationDays={challenge.duration_days}
+    />
   );
 }
 
-// Helper function to get participant stats (duplicated from checkAchievements for server component)
-async function getParticipantStats(
+// Helper function to get participant stats (excluding completionRate)
+async function getBaseParticipantStats(
   supabase: Awaited<ReturnType<typeof createClient>>,
   participantId: string,
-  challengeId: string
-): Promise<ParticipantStats> {
-  // Get participant data
-  const { data: participant } = await supabase
-    .from('challenge_participants')
-    .select('current_streak, longest_streak, total_points, status')
-    .eq('id', participantId)
-    .single();
-
-  if (!participant) {
-    return {
-      currentStreak: 0,
-      longestStreak: 0,
-      totalPoints: 0,
-      entriesCount: 0,
-      perfectDays: 0,
-      completionRate: 0,
-      earlyEntries: 0,
-      lateEntries: 0,
-      challengeComplete: false,
-    };
-  }
-
+  participant: { current_streak: number | null; longest_streak: number | null; total_points: number | null; status: string }
+): Promise<Omit<ParticipantStats, 'completionRate'>> {
   // Get entry stats
   const { data: entries } = await supabase
     .from('daily_entries')
@@ -151,38 +118,12 @@ async function getParticipantStats(
       return hour >= 21;
     }).length || 0;
 
-  // Calculate completion rate
-  const { data: challenge } = await supabase
-    .from('challenges')
-    .select('starts_at, ends_at, duration_days')
-    .eq('id', challengeId)
-    .single();
-
-  let completionRate = 0;
-  if (challenge && entries) {
-    // Use parseLocalDate to correctly handle dates in local timezone
-    const startDate = parseLocalDate(getLocalDateFromISO(challenge.starts_at));
-    const endDate = challenge.ends_at ? parseLocalDate(getLocalDateFromISO(challenge.ends_at)) : null;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const effectiveEnd = endDate && endDate < today ? endDate : today;
-
-    const totalDays = Math.max(
-      1,
-      Math.floor((effectiveEnd.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
-    );
-
-    const completedDays = entries.filter(e => e.is_completed).length;
-    completionRate = Math.round((completedDays / totalDays) * 100);
-  }
-
   return {
     currentStreak: participant.current_streak || 0,
     longestStreak: participant.longest_streak || 0,
     totalPoints: participant.total_points || 0,
     entriesCount,
     perfectDays,
-    completionRate,
     earlyEntries,
     lateEntries,
     challengeComplete: participant.status === 'completed',

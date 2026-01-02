@@ -49,3 +49,43 @@ export function getLocalDateFromISO(isoString: string): string {
   const date = new Date(isoString);
   return toLocalDateString(date);
 }
+
+/**
+ * Get the local date string from an ISO timestamp in a specific timezone.
+ * Use this on the SERVER when you know the user's timezone.
+ *
+ * @param isoString - ISO timestamp from database (e.g., "2026-01-02T05:00:00.000Z")
+ * @param timezone - IANA timezone string (e.g., "America/New_York")
+ * @returns Date string in YYYY-MM-DD format in the specified timezone
+ */
+export function getLocalDateFromISOWithTimezone(isoString: string, timezone: string): string {
+  const date = new Date(isoString);
+  // en-CA locale gives YYYY-MM-DD format
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
+}
+
+/**
+ * Get today's date string in a specific timezone.
+ * Use this on the SERVER when you know the user's timezone.
+ *
+ * @param timezone - IANA timezone string (e.g., "America/New_York")
+ * @returns Today's date in YYYY-MM-DD format in the specified timezone
+ */
+export function getTodayDateStringWithTimezone(timezone: string): string {
+  return getLocalDateFromISOWithTimezone(new Date().toISOString(), timezone);
+}
+
+/**
+ * Get the user's timezone from the browser.
+ * Use this in CLIENT components to pass to server actions.
+ *
+ * @returns IANA timezone string (e.g., "America/New_York")
+ */
+export function getUserTimezone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
+}

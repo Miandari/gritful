@@ -13,7 +13,7 @@ import { recalculateAllPoints } from '@/app/actions/recalculatePoints';
 import { updateChallengeSettings } from '@/app/actions/updateChallenge';
 import { MetricFormData } from '@/lib/validations/challenge';
 import { getChallengeState } from '@/lib/utils/challengeState';
-import { parseLocalDate, getLocalDateFromISO, getTodayDateString } from '@/lib/utils/dates';
+import { parseLocalDate, getLocalDateFromISO, getTodayDateString, getUserTimezone } from '@/lib/utils/dates';
 
 interface EditChallengeFormProps {
   challenge: any;
@@ -98,6 +98,7 @@ export default function EditChallengeForm({ challenge }: EditChallengeFormProps)
         perfect_day_bonus_points: number;
         grace_period_days: number;
         ends_at?: string | null;
+        timezone?: string;
       } = {
         challengeId: challenge.id,
         metrics,
@@ -106,6 +107,7 @@ export default function EditChallengeForm({ challenge }: EditChallengeFormProps)
         enable_perfect_day_bonus: enablePerfectDayBonus,
         perfect_day_bonus_points: perfectDayBonusPoints,
         grace_period_days: gracePeriodDays,
+        timezone: getUserTimezone(),
       };
 
       // Include ends_at only if duration can be modified and value changed

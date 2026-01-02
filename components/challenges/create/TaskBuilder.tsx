@@ -11,7 +11,7 @@ import { defaultMetricTemplates, TaskFrequency } from '@/lib/validations/challen
 import { MetricFormData } from '@/lib/validations/challenge';
 import { DEADLINE_PRESETS, calculateDeadline, DeadlinePreset, formatDeadlineForDisplay } from '@/lib/utils/deadlines';
 import { format } from 'date-fns';
-import { parseLocalDate } from '@/lib/utils/dates';
+import { parseLocalDate, getLocalDateFromISO } from '@/lib/utils/dates';
 
 type GoalDirection = 'at_least' | 'at_most';
 
@@ -120,10 +120,10 @@ export function TaskBuilder({ metric, onSave, onSaveAndAddAnother, onCancel, cha
     } else {
       const deadline = calculateDeadline(preset);
       if (deadline) {
-        // Clamp to challenge end date if provided (use parseLocalDate for correct timezone)
+        // Clamp to challenge end date if provided (use getLocalDateFromISO for correct timezone)
         let finalDeadline = deadline;
         if (challengeEndDate) {
-          const endDate = parseLocalDate(challengeEndDate.split('T')[0]);
+          const endDate = parseLocalDate(getLocalDateFromISO(challengeEndDate));
           endDate.setHours(23, 59, 59, 999); // End of day
           if (deadline > endDate) {
             finalDeadline = endDate;
@@ -142,7 +142,7 @@ export function TaskBuilder({ metric, onSave, onSaveAndAddAnother, onCancel, cha
       deadline.setHours(23, 59, 59, 999); // End of day
       // Clamp to challenge end date if provided
       if (challengeEndDate) {
-        const endDate = parseLocalDate(challengeEndDate.split('T')[0]);
+        const endDate = parseLocalDate(getLocalDateFromISO(challengeEndDate));
         endDate.setHours(23, 59, 59, 999);
         if (deadline > endDate) {
           setFormData({ ...formData, deadline: endDate.toISOString() });

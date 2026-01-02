@@ -12,6 +12,7 @@ import { Clock, CheckCircle2, ChevronDown, ChevronUp, Loader2, ArrowUpRight } fr
 import { DeadlineBadge } from './DeadlineBadge';
 import { saveOnetimeTaskCompletion } from '@/app/actions/onetimeTasks';
 import { useRouter } from 'next/navigation';
+import { getUserTimezone } from '@/lib/utils/dates';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 import { FileUpload } from '@/components/ui/file-upload';
@@ -98,6 +99,7 @@ export function OnetimeTaskInput({
         participantId,
         taskId: task.id,
         value: task.type === 'boolean' ? true : value,
+        timezone: getUserTimezone(),
       });
 
       if (!result.success) {

@@ -19,7 +19,6 @@ interface Participant {
     avatar_url: string | null;
   };
   completedDays: number;
-  totalDays: number;
   lastActivity: string | null;
   entries: any[];
 }
@@ -32,6 +31,7 @@ interface ParticipantsLeaderboardProps {
   challengeCreatorId: string;
   challengeStartDateISO: string;  // Raw ISO timestamp from database
   challengeEndDateISO: string | null;  // Raw ISO timestamp from database
+  challengeDurationDays: number | null;  // For calculating maxDays
   challengeMetrics: any[];
 }
 
@@ -43,6 +43,7 @@ export function ParticipantsLeaderboard({
   challengeCreatorId,
   challengeStartDateISO,
   challengeEndDateISO,
+  challengeDurationDays,
   challengeMetrics
 }: ParticipantsLeaderboardProps) {
   // Convert ISO timestamps to local dates ON THE CLIENT for correct user timezone
@@ -51,6 +52,17 @@ export function ParticipantsLeaderboard({
     ? parseLocalDate(getLocalDateFromISO(challengeEndDateISO))
     : new Date(2099, 11, 31);
   const [selectedParticipant, setSelectedParticipant] = useState<Participant | null>(null);
+
+  // Calculate totalDays on CLIENT for correct timezone
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const rawTotalDays = Math.ceil(
+    (today.getTime() - challengeStartDate.getTime()) / (1000 * 60 * 60 * 24)
+  ) + 1;
+  const isOngoing = challengeEndDateISO === null;
+  const totalDays = isOngoing
+    ? Math.max(rawTotalDays, 0)
+    : Math.min(rawTotalDays, challengeDurationDays || 0);
 
   // Sort by total points, then by current streak
   const sortedParticipants = [...participants].sort((a, b) => {
@@ -122,7 +134,7 @@ export function ParticipantsLeaderboard({
                       <div className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
                         <span>
-                          {participant.completedDays}/{participant.totalDays} days
+                          {participant.completedDays}/{totalDays} days
                         </span>
                       </div>
                     </div>

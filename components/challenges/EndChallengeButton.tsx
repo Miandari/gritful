@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { endChallenge } from '@/app/actions/endChallenge';
 import { useRouter } from 'next/navigation';
+import { getUserTimezone } from '@/lib/utils/dates';
 import toast from 'react-hot-toast';
 import { StopCircle } from 'lucide-react';
 
@@ -37,7 +38,7 @@ export function EndChallengeButton({ challengeId, isOngoing, isCreator }: EndCha
     setError(null);
 
     try {
-      const result = await endChallenge(challengeId);
+      const result = await endChallenge(challengeId, getUserTimezone());
 
       if (result.success) {
         toast.success('Challenge ended successfully');

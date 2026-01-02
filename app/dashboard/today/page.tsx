@@ -2,15 +2,12 @@ import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Calendar, CheckCircle, XCircle, ArrowUpRight, Clock, Infinity } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 import { format } from 'date-fns';
-import { getTodayDateString, parseLocalDate, getLocalDateFromISO } from '@/lib/utils/dates';
+import { getTodayDateString } from '@/lib/utils/dates';
 import Link from 'next/link';
-import DailyEntryForm from '@/components/daily-entry/DailyEntryForm';
+import { TodayChallengeCard } from '@/components/dashboard/TodayChallengeCard';
 import { getChallengeState, ChallengeStateResult } from '@/lib/utils/challengeState';
-import { cn } from '@/lib/utils';
 
 export default async function TodayPage() {
   const supabase = await createClient();
@@ -155,96 +152,30 @@ export default async function TodayPage() {
       <div className="space-y-6">
         {activeChallenges.map((challenge) => {
           const entry = todayEntries[challenge.participation_id];
-          const isCompleted = entry?.is_completed;
-          const isLocked = entry?.is_locked;
           const challengeState = challenge.challengeState as ChallengeStateResult;
-          const isGracePeriod = challengeState?.state === 'grace_period';
-          const isOngoing = challenge.ends_at === null;
-          // Use parseLocalDate to correctly handle the start date in local timezone
-          const todayMidnight = new Date();
-          todayMidnight.setHours(0, 0, 0, 0);
-          const challengeStart = parseLocalDate(getLocalDateFromISO(challenge.starts_at));
-          const daysElapsed = Math.floor(
-            (todayMidnight.getTime() - challengeStart.getTime()) /
-              (1000 * 60 * 60 * 24)
-          );
 
           return (
-            <Card
+            <TodayChallengeCard
               key={challenge.id}
-              className={cn(
-                isCompleted && 'border-green-500 border-2',
-                isGracePeriod && !isCompleted && 'border-2 border-amber-400 bg-amber-50/30 dark:bg-amber-950/20'
-              )}
-            >
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle>
-                      <Link
-                        href={`/challenges/${challenge.id}`}
-                        className="flex items-center gap-2 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 transition-colors group w-fit underline-offset-4 hover:underline"
-                      >
-                        {challenge.name}
-                        <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                      </Link>
-                    </CardTitle>
-                    <CardDescription className="mt-1">
-                      {isOngoing ? (
-                        <span className="flex items-center gap-1">
-                          <Infinity className="h-3 w-3" />
-                          Day {daysElapsed + 1}
-                        </span>
-                      ) : (
-                        `Day ${Math.min(daysElapsed + 1, challenge.duration_days)} of ${challenge.duration_days}`
-                      )}
-                    </CardDescription>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {isGracePeriod && (
-                      <Badge
-                        variant="outline"
-                        className="bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-600"
-                      >
-                        <Clock className="mr-1 h-3 w-3" />
-                        {challengeState.daysRemainingInGrace}d grace
-                      </Badge>
-                    )}
-                    <Badge variant="secondary">{challenge.current_streak} day streak</Badge>
-                    {isCompleted && (
-                      <Badge variant="default" className="bg-green-600 dark:bg-green-600">
-                        <CheckCircle className="mr-1 h-3 w-3" />
-                        Completed
-                      </Badge>
-                    )}
-                    {isLocked && (
-                      <Badge variant="secondary">
-                        Locked
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {isCompleted && isLocked ? (
-                  <Alert>
-                    <CheckCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      You&apos;ve completed today&apos;s entry and it&apos;s now locked. Great job!
-                    </AlertDescription>
-                  </Alert>
-                ) : (
-                  <DailyEntryForm
-                    challenge={challenge}
-                    participationId={challenge.participation_id}
-                    existingEntry={entry}
-                    isLocked={isLocked}
-                    onetimeCompletions={onetimeCompletionsMap[challenge.participation_id] || []}
-                    periodicCompletions={periodicCompletionsMap[challenge.participation_id] || []}
-                  />
-                )}
-              </CardContent>
-            </Card>
+              challenge={{
+                id: challenge.id,
+                name: challenge.name,
+                starts_at: challenge.starts_at,
+                ends_at: challenge.ends_at,
+                duration_days: challenge.duration_days,
+                participation_id: challenge.participation_id,
+                current_streak: challenge.current_streak,
+                metrics: challenge.metrics,
+                enable_streak_bonus: challenge.enable_streak_bonus,
+                streak_bonus_points: challenge.streak_bonus_points,
+                enable_perfect_day_bonus: challenge.enable_perfect_day_bonus,
+                perfect_day_bonus_points: challenge.perfect_day_bonus_points,
+              }}
+              entry={entry || null}
+              challengeState={challengeState}
+              onetimeCompletions={onetimeCompletionsMap[challenge.participation_id] || []}
+              periodicCompletions={periodicCompletionsMap[challenge.participation_id] || []}
+            />
           );
         })}
       </div>

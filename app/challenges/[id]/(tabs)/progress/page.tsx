@@ -4,12 +4,11 @@ import { ProgressCalendar } from '@/components/progress/ProgressCalendar';
 import { StreakDisplay } from '@/components/progress/StreakDisplay';
 import { ParticipantsLeaderboard } from '@/components/progress/ParticipantsLeaderboard';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
-import { format } from 'date-fns';
-import { parseLocalDate, getLocalDateFromISO } from '@/lib/utils/dates';
+import { ProgressStatsSection } from '@/components/progress/ProgressStatsSection';
+import { ProgressTimelineCards } from '@/components/progress/ProgressTimelineCards';
 
 export const revalidate = 0;
 
@@ -81,17 +80,8 @@ export default async function ProgressPage({
     (sum, c) => sum + (c.points_earned || 0), 0
   ) || 0;
 
-  // Calculate my statistics
+  // Calculate my statistics (date calculations moved to client for correct timezone)
   const myCompletedDays = myEntries?.filter(e => e.is_completed).length || 0;
-  // Use parseLocalDate to correctly handle the start date in local timezone
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const challengeStartDate = parseLocalDate(getLocalDateFromISO(challenge.starts_at));
-  const totalDays = Math.ceil(
-    (today.getTime() - challengeStartDate.getTime()) /
-    (1000 * 60 * 60 * 24)
-  ) + 1; // +1 because we count the start day as day 1
-  const maxDays = Math.min(totalDays, challenge.duration_days);
 
   // Fetch all participants (without join to avoid schema cache issues)
   const { data: allParticipants, error: participantsError } = await supabase
@@ -148,7 +138,6 @@ export default async function ProgressPage({
       return {
         ...participant,
         completedDays,
-        totalDays: maxDays,
         lastActivity,
         entries,
       };
@@ -179,43 +168,19 @@ export default async function ProgressPage({
           </div>
         </div>
 
-        {/* Quick Personal Stats */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-sm text-gray-600">Your Rank</div>
-              <div className="text-2xl font-bold">
-                #{participantsWithStats.findIndex(p => p.user_id === user.id) + 1}
-              </div>
-              <div className="text-xs text-gray-500">of {participantsWithStats.length}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-sm text-gray-600">Total Points</div>
-              <div className="text-2xl font-bold">{myParticipation.total_points || 0}</div>
-              <div className="text-xs text-gray-500">
-                {myEntries?.reduce((sum, e) => sum + (e.bonus_points || 0), 0) || 0} bonus
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-sm text-gray-600">Current Streak</div>
-              <div className="text-2xl font-bold">{myParticipation.current_streak || 0}</div>
-              <div className="text-xs text-gray-500">days in a row</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-sm text-gray-600">Completion</div>
-              <div className="text-2xl font-bold">
-                {maxDays > 0 ? Math.round((myCompletedDays / maxDays) * 100) : 0}%
-              </div>
-              <div className="text-xs text-gray-500">{myCompletedDays}/{maxDays} days</div>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Quick Personal Stats - uses ProgressStatsSection for correct client-side timezone handling */}
+        <ProgressStatsSection
+          startsAt={challenge.starts_at}
+          endsAt={challenge.ends_at}
+          durationDays={challenge.duration_days}
+          myCompletedDays={myCompletedDays}
+          currentStreak={myParticipation.current_streak || 0}
+          longestStreak={myParticipation.longest_streak || 0}
+          totalPoints={myParticipation.total_points || 0}
+          onetimePoints={onetimePoints}
+          rank={participantsWithStats.findIndex(p => p.user_id === user.id) + 1}
+          totalParticipants={participantsWithStats.length}
+        />
 
         {/* Tabs */}
         <Tabs defaultValue="leaderboard" className="w-full">
@@ -287,8 +252,10 @@ export default async function ProgressPage({
             <StreakDisplay
               currentStreak={myParticipation.current_streak || 0}
               longestStreak={myParticipation.longest_streak || 0}
-              totalDays={maxDays}
               completedDays={myCompletedDays}
+              startsAt={challenge.starts_at}
+              endsAt={challenge.ends_at}
+              durationDays={challenge.duration_days}
             />
 
             {/* Calendar View */}
@@ -301,63 +268,16 @@ export default async function ProgressPage({
             />
 
             {/* Additional Stats */}
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="rounded-lg bg-card p-4 sm:p-6 shadow">
-                <h3 className="text-base sm:text-lg font-semibold mb-4">Challenge Timeline</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between gap-2 text-sm sm:text-base">
-                    <span className="text-muted-foreground shrink-0">Started</span>
-                    <span className="font-medium text-right">
-                      {format(new Date(challenge.starts_at), 'MMM d, yyyy')}
-                    </span>
-                  </div>
-                  <div className="flex justify-between gap-2 text-sm sm:text-base">
-                    <span className="text-muted-foreground shrink-0">Ends</span>
-                    <span className="font-medium text-right">
-                      {format(new Date(challenge.ends_at), 'MMM d, yyyy')}
-                    </span>
-                  </div>
-                  <div className="flex justify-between gap-2 text-sm sm:text-base">
-                    <span className="text-muted-foreground shrink-0">Days Remaining</span>
-                    <span className="font-medium">
-                      {Math.max(0, challenge.duration_days - maxDays)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-lg bg-card p-4 sm:p-6 shadow">
-                <h3 className="text-base sm:text-lg font-semibold mb-4">Performance Metrics</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between gap-2 text-sm sm:text-base">
-                    <span className="text-muted-foreground shrink-0">Perfect Weeks</span>
-                    <span className="font-medium">
-                      {Math.floor((myParticipation.longest_streak || 0) / 7)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between gap-2 text-sm sm:text-base">
-                    <span className="text-muted-foreground shrink-0">Missed Days</span>
-                    <span className="font-medium">
-                      {maxDays - myCompletedDays}
-                    </span>
-                  </div>
-                  {onetimeTasksTotal > 0 && (
-                    <div className="flex justify-between gap-2 text-sm sm:text-base">
-                      <span className="text-muted-foreground shrink-0">One-time Tasks</span>
-                      <span className="font-medium">
-                        {onetimeTasksCompleted}/{onetimeTasksTotal}
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex justify-between gap-2 text-sm sm:text-base">
-                    <span className="text-muted-foreground shrink-0">Status</span>
-                    <span className="font-medium capitalize">
-                      {myParticipation.status}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <ProgressTimelineCards
+              startsAt={challenge.starts_at}
+              endsAt={challenge.ends_at}
+              durationDays={challenge.duration_days}
+              completedDays={myCompletedDays}
+              longestStreak={myParticipation.longest_streak || 0}
+              status={myParticipation.status}
+              onetimeTasksCompleted={onetimeTasksCompleted}
+              onetimeTasksTotal={onetimeTasksTotal}
+            />
           </TabsContent>
 
           {/* Leaderboard Tab */}
@@ -371,6 +291,7 @@ export default async function ProgressPage({
               challengeCreatorId={challenge.creator_id}
               challengeStartDateISO={challenge.starts_at}
               challengeEndDateISO={challenge.ends_at}
+              challengeDurationDays={challenge.duration_days}
               challengeMetrics={challenge.metrics || []}
             />
           </TabsContent>

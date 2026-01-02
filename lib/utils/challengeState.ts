@@ -2,6 +2,12 @@
  * Challenge state utilities for determining active status and grace period
  */
 
+import {
+  parseLocalDate,
+  getLocalDateFromISO,
+  getLocalDateFromISOWithTimezone,
+} from './dates';
+
 export type ChallengeState =
   | 'upcoming'      // Challenge hasn't started yet
   | 'active'        // Challenge is within normal duration
@@ -28,17 +34,24 @@ export interface ChallengeForStateCheck {
  * Determine the current state of a challenge
  * @param challenge - Challenge object with date fields
  * @param referenceDate - Date to check against (defaults to today)
+ * @param timezone - Optional IANA timezone string for server-side use (e.g., "America/New_York")
  * @returns ChallengeStateResult with state and entry allowance
  */
 export function getChallengeState(
   challenge: ChallengeForStateCheck,
-  referenceDate: Date = new Date()
+  referenceDate: Date = new Date(),
+  timezone?: string
 ): ChallengeStateResult {
   const today = new Date(referenceDate);
   today.setHours(0, 0, 0, 0);
 
-  const startDate = new Date(challenge.starts_at);
-  startDate.setHours(0, 0, 0, 0);
+  // Parse start date with timezone awareness
+  // If timezone provided (server-side), use timezone-aware parsing
+  // Otherwise use getLocalDateFromISO (client-side, uses browser timezone)
+  const startDateStr = timezone
+    ? getLocalDateFromISOWithTimezone(challenge.starts_at, timezone)
+    : getLocalDateFromISO(challenge.starts_at);
+  const startDate = parseLocalDate(startDateStr);
 
   // Handle ongoing challenges (no end date and not manually ended)
   if (challenge.ends_at === null && !challenge.ended_at) {
@@ -52,9 +65,17 @@ export function getChallengeState(
   }
 
   // Determine effective end date (ended_at for manually ended ongoing, otherwise ends_at)
-  const effectiveEndDateStr = challenge.ended_at
-    ? challenge.ended_at.split('T')[0]
-    : challenge.ends_at;
+  // Use timezone-aware parsing
+  let effectiveEndDateStr: string | null = null;
+  if (challenge.ended_at) {
+    effectiveEndDateStr = timezone
+      ? getLocalDateFromISOWithTimezone(challenge.ended_at, timezone)
+      : getLocalDateFromISO(challenge.ended_at);
+  } else if (challenge.ends_at) {
+    effectiveEndDateStr = timezone
+      ? getLocalDateFromISOWithTimezone(challenge.ends_at, timezone)
+      : getLocalDateFromISO(challenge.ends_at);
+  }
 
   if (!effectiveEndDateStr) {
     return {
@@ -66,8 +87,7 @@ export function getChallengeState(
     };
   }
 
-  const endDate = new Date(effectiveEndDateStr);
-  endDate.setHours(0, 0, 0, 0);
+  const endDate = parseLocalDate(effectiveEndDateStr);
 
   const gracePeriodDays = challenge.grace_period_days ?? 7;
   const gracePeriodEndDate = new Date(endDate);
@@ -126,8 +146,11 @@ export function getChallengeState(
  * Check if a challenge should appear in the Active tab
  * (active, grace_period, or ongoing)
  */
-export function isActiveChallenge(challenge: ChallengeForStateCheck): boolean {
-  const { state } = getChallengeState(challenge);
+export function isActiveChallenge(
+  challenge: ChallengeForStateCheck,
+  timezone?: string
+): boolean {
+  const { state } = getChallengeState(challenge, new Date(), timezone);
   return state === 'active' || state === 'grace_period' || state === 'ongoing';
 }
 
@@ -135,7 +158,10 @@ export function isActiveChallenge(challenge: ChallengeForStateCheck): boolean {
  * Check if a challenge should appear in the History tab
  * (archived only - past grace period)
  */
-export function isHistoryChallenge(challenge: ChallengeForStateCheck): boolean {
-  const { state } = getChallengeState(challenge);
+export function isHistoryChallenge(
+  challenge: ChallengeForStateCheck,
+  timezone?: string
+): boolean {
+  const { state } = getChallengeState(challenge, new Date(), timezone);
   return state === 'archived';
 }
