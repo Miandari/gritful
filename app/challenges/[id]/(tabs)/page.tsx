@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import CopyInviteCodeButton from '@/components/challenges/CopyInviteCodeButton';
+import InviteLinkCard from '@/components/challenges/InviteLinkCard';
 import { AddOnetimeTaskButton } from '@/components/challenges/AddOnetimeTaskButton';
 import { BatchAddTasksModal } from '@/components/challenges/BatchAddTasksModal';
 import { DeadlineBadge } from '@/components/daily-entry/DeadlineBadge';
@@ -500,12 +501,15 @@ export default async function ChallengeOverviewPage({
 
       {!challenge.is_public && isCreator && (
         <div className="mt-6 space-y-4">
+          {/* Invite Link */}
+          <InviteLinkCard challengeId={id} />
+
           {/* Invite Code */}
           {challenge.invite_code && (
             <Card>
               <CardHeader>
                 <CardTitle>Invite Code</CardTitle>
-                <CardDescription>Share this code with people you want to join</CardDescription>
+                <CardDescription>Share this code with people you want to join (instant access)</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-4">

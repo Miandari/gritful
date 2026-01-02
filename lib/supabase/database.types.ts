@@ -218,6 +218,67 @@ export type Database = {
           expires_at?: string
         }
       }
+      challenge_invite_links: {
+        Row: {
+          id: string
+          challenge_id: string
+          token: string
+          auto_admit: boolean
+          expires_at: string | null
+          max_uses: number | null
+          use_count: number
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          challenge_id: string
+          token: string
+          auto_admit?: boolean
+          expires_at?: string | null
+          max_uses?: number | null
+          use_count?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          challenge_id?: string
+          token?: string
+          auto_admit?: boolean
+          expires_at?: string | null
+          max_uses?: number | null
+          use_count?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      invite_link_uses: {
+        Row: {
+          id: string
+          invite_link_id: string
+          user_id: string
+          used_at: string
+          result: string
+        }
+        Insert: {
+          id?: string
+          invite_link_id: string
+          user_id: string
+          used_at?: string
+          result: string
+        }
+        Update: {
+          id?: string
+          invite_link_id?: string
+          user_id?: string
+          used_at?: string
+          result?: string
+        }
+      }
       profiles: {
         Row: {
           id: string
