@@ -10,6 +10,7 @@ import { CreatorRibbon } from '@/components/challenges/CreatorBadge';
 import { format } from 'date-fns';
 import { getChallengeState, ChallengeStateResult } from '@/lib/utils/challengeState';
 import { cn } from '@/lib/utils';
+import { getTodayDateString } from '@/lib/utils/dates';
 
 export default async function ChallengesPage({
   searchParams,
@@ -41,7 +42,7 @@ export default async function ChallengesPage({
     .eq('status', 'active');
 
   // Get challenges user created (active ones)
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getTodayDateString();
   const { data: myCreatedChallenges } = await supabase
     .from('challenges')
     .select('*')
@@ -137,7 +138,7 @@ export default async function ChallengesPage({
   // Fetch today's entries for active challenges
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const todayStrEntry = today.toISOString().split('T')[0];
+  const todayStrEntry = getTodayDateString();
 
   const { data: todayEntries } = await supabase
     .from('daily_entries')

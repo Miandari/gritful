@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { parseLocalDate } from '@/lib/utils/dates';
+import { parseLocalDate, getLocalDateFromISO } from '@/lib/utils/dates';
 
 interface UpdateChallengeData {
   challengeId: string;
@@ -51,13 +51,13 @@ export async function updateChallengeSettings(data: UpdateChallengeData) {
       const hasEnded = challenge.ends_at !== null || challenge.ended_at !== null;
       if (hasEnded) {
         const effectiveEndDateStr = challenge.ended_at
-          ? challenge.ended_at.split('T')[0]
-          : challenge.ends_at;
-        const endDate = new Date(effectiveEndDateStr);
-        endDate.setHours(0, 0, 0, 0);
+          ? getLocalDateFromISO(challenge.ended_at)
+          : challenge.ends_at ? getLocalDateFromISO(challenge.ends_at) : null;
+        const endDate = effectiveEndDateStr ? parseLocalDate(effectiveEndDateStr) : null;
+        if (endDate) endDate.setHours(0, 0, 0, 0);
 
         // If end date is in the past, challenge has ended
-        if (endDate < today) {
+        if (endDate && endDate < today) {
           return { success: false, error: 'Cannot modify duration of an ended challenge' };
         }
       }
@@ -102,8 +102,8 @@ export async function updateChallengeSettings(data: UpdateChallengeData) {
         updateData.duration_days = null;
       } else {
         // Calculate duration_days from starts_at to new ends_at (use parseLocalDate for correct timezone)
-        const startDate = parseLocalDate(challenge.starts_at.split('T')[0]);
-        const endDate = parseLocalDate(data.ends_at.split('T')[0]);
+        const startDate = parseLocalDate(getLocalDateFromISO(challenge.starts_at));
+        const endDate = parseLocalDate(data.ends_at.includes('T') ? getLocalDateFromISO(data.ends_at) : data.ends_at);
         const diffTime = endDate.getTime() - startDate.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 to include both days
         updateData.duration_days = diffDays;

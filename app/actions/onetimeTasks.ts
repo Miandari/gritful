@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { calculateMetricPoints } from '@/lib/utils/scoring';
 import type { OnetimeTaskCompletion } from '@/lib/validations/challenge';
-import { parseLocalDate } from '@/lib/utils/dates';
+import { parseLocalDate, getLocalDateFromISO } from '@/lib/utils/dates';
 
 interface SaveOnetimeTaskData {
   participantId: string;
@@ -55,7 +55,7 @@ export async function saveOnetimeTaskCompletion(data: SaveOnetimeTaskData) {
     if (challenge.ends_at) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const challengeEnd = parseLocalDate(challenge.ends_at.split('T')[0]);
+      const challengeEnd = parseLocalDate(getLocalDateFromISO(challenge.ends_at));
       challengeEnd.setHours(23, 59, 59, 999); // End of day
       if (today > challengeEnd) {
         return { success: false, error: 'Challenge has ended' };
@@ -321,10 +321,10 @@ export async function addTaskToChallenge(
 
     // Validate that task ends_at doesn't exceed challenge ends_at (use parseLocalDate for correct timezone)
     const challengeEndDate = challenge.ends_at
-      ? parseLocalDate(challenge.ends_at.split('T')[0])
+      ? parseLocalDate(getLocalDateFromISO(challenge.ends_at))
       : new Date(2099, 11, 31); // Far future for ongoing challenges
     let taskEndsAt = task.ends_at
-      ? parseLocalDate(task.ends_at.split('T')[0])
+      ? parseLocalDate(task.ends_at.includes('T') ? getLocalDateFromISO(task.ends_at) : task.ends_at)
       : challengeEndDate;
 
     if (taskEndsAt > challengeEndDate) {
@@ -446,8 +446,8 @@ export async function batchAddTasks(
     // Validate deadline doesn't exceed challenge end (use parseLocalDate for correct timezone)
     let taskDeadline = deadline;
     if (deadline && challenge.ends_at) {
-      const deadlineDate = parseLocalDate(deadline.split('T')[0]);
-      const challengeEndDate = parseLocalDate(challenge.ends_at.split('T')[0]);
+      const deadlineDate = parseLocalDate(deadline.includes('T') ? getLocalDateFromISO(deadline) : deadline);
+      const challengeEndDate = parseLocalDate(getLocalDateFromISO(challenge.ends_at));
       if (deadlineDate > challengeEndDate) {
         taskDeadline = challenge.ends_at;
       }

@@ -13,7 +13,7 @@ import { recalculateAllPoints } from '@/app/actions/recalculatePoints';
 import { updateChallengeSettings } from '@/app/actions/updateChallenge';
 import { MetricFormData } from '@/lib/validations/challenge';
 import { getChallengeState } from '@/lib/utils/challengeState';
-import { parseLocalDate } from '@/lib/utils/dates';
+import { parseLocalDate, getLocalDateFromISO, getTodayDateString } from '@/lib/utils/dates';
 
 interface EditChallengeFormProps {
   challenge: any;
@@ -53,14 +53,14 @@ export default function EditChallengeForm({ challenge }: EditChallengeFormProps)
   // Calculate duration in days (use parseLocalDate for correct timezone handling)
   const calculatedDuration = useMemo(() => {
     if (isOngoing || !endsAt) return null;
-    const start = parseLocalDate(challenge.starts_at.split('T')[0]);
-    const end = parseLocalDate(endsAt.split('T')[0]);
+    const start = parseLocalDate(getLocalDateFromISO(challenge.starts_at));
+    const end = parseLocalDate(endsAt.includes('T') ? getLocalDateFromISO(endsAt) : endsAt);
     const diffTime = end.getTime() - start.getTime();
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 to include both start and end days
   }, [challenge.starts_at, endsAt, isOngoing]);
 
   // Get today's date for min value
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayDateString();
 
   const totalPossiblePoints = metrics.reduce((sum, m) => sum + (m.points || 1), 0);
 

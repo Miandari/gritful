@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import type { Achievement, ParticipantStats, EarnedAchievement } from './types';
-import { parseLocalDate } from '@/lib/utils/dates';
+import { parseLocalDate, getLocalDateFromISO } from '@/lib/utils/dates';
 
 /**
  * Check and award achievements for a participant after an action (e.g., entry submission)
@@ -127,8 +127,8 @@ async function getParticipantStats(participantId: string): Promise<ParticipantSt
   let completionRate = 0;
   if (challenge && entries) {
     // Use parseLocalDate to correctly handle dates in local timezone
-    const startDate = parseLocalDate(challenge.starts_at.split('T')[0]);
-    const endDate = challenge.ends_at ? parseLocalDate(challenge.ends_at.split('T')[0]) : null;
+    const startDate = parseLocalDate(getLocalDateFromISO(challenge.starts_at));
+    const endDate = challenge.ends_at ? parseLocalDate(getLocalDateFromISO(challenge.ends_at)) : null;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const effectiveEnd = endDate && endDate < today ? endDate : today;
