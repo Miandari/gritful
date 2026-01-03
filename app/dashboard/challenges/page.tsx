@@ -7,10 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Trophy, Calendar, Users, TrendingUp, Plus, Search, Infinity, Clock } from 'lucide-react';
 import { CreatorRibbon } from '@/components/challenges/CreatorBadge';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import { getChallengeState, ChallengeStateResult } from '@/lib/utils/challengeState';
 import { cn } from '@/lib/utils';
-import { getTodayDateString } from '@/lib/utils/dates';
+import { TodayStatusBadge } from '@/components/dashboard/TodayStatusBadge';
 
 export default async function ChallengesPage({
   searchParams,
@@ -42,12 +42,13 @@ export default async function ChallengesPage({
     .eq('status', 'active');
 
   // Get challenges user created (active ones)
-  const todayStr = getTodayDateString();
+  // Note: Using server date for challenge filtering is acceptable
+  const serverTodayStr = format(new Date(), 'yyyy-MM-dd');
   const { data: myCreatedChallenges } = await supabase
     .from('challenges')
     .select('*')
     .eq('creator_id', user.id)
-    .or(`ends_at.is.null,ends_at.gte.${todayStr}`)
+    .or(`ends_at.is.null,ends_at.gte.${serverTodayStr}`)
     .order('created_at', { ascending: false });
 
   // Get history: challenges that ended or where participation status is completed/failed
@@ -135,19 +136,18 @@ export default async function ChallengesPage({
 
   const historyChallenges = Array.from(historyMap.values());
 
-  // Fetch today's entries for active challenges
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayStrEntry = getTodayDateString();
+  // Fetch recent entries for active challenges (past 3 days to handle timezone differences)
+  // Client component will filter to find today's entries in user's local timezone
+  const threeDaysAgo = format(subDays(new Date(), 3), 'yyyy-MM-dd');
 
-  const { data: todayEntries } = await supabase
+  const { data: recentEntries } = await supabase
     .from('daily_entries')
     .select('participant_id, is_completed, entry_date')
     .in(
       'participant_id',
       activeChallenges.map((p) => p.id)
     )
-    .eq('entry_date', todayStrEntry);
+    .gte('entry_date', threeDaysAgo);
 
   const hasNoChallenges =
     activeChallenges.length === 0 &&
@@ -275,9 +275,10 @@ export default async function ChallengesPage({
                 const progress = isOngoing
                   ? null
                   : Math.min(100, (daysElapsed / challenge.duration_days) * 100);
-                const todayEntry = todayEntries?.find(
+                // Filter recent entries for this participation
+                const participantEntries = recentEntries?.filter(
                   (e) => e.participant_id === participation.id
-                );
+                ) || [];
                 const isCreator = challenge.creator_id === user.id;
                 const isGracePeriod = challengeState?.state === 'grace_period';
 
@@ -352,11 +353,7 @@ export default async function ChallengesPage({
                           <div>
                             <div className="text-muted-foreground text-xs">Today</div>
                             <div className="font-semibold">
-                              {todayEntry?.is_completed ? (
-                                <span className="text-green-600">Done</span>
-                              ) : (
-                                <span className="text-amber-600">Pending</span>
-                              )}
+                              <TodayStatusBadge recentEntries={participantEntries} />
                             </div>
                           </div>
                         </div>
@@ -364,11 +361,9 @@ export default async function ChallengesPage({
                           <Button asChild size="sm" className="flex-1">
                             <Link href={`/challenges/${challenge.id}`}>View Details</Link>
                           </Button>
-                          {!todayEntry?.is_completed && (
-                            <Button asChild size="sm" variant="outline" className="flex-1">
-                              <Link href="/dashboard/today">Track</Link>
-                            </Button>
-                          )}
+                          <Button asChild size="sm" variant="outline" className="flex-1">
+                            <Link href="/dashboard/today">Track</Link>
+                          </Button>
                         </div>
                       </div>
                     </CardContent>

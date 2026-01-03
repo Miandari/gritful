@@ -12,7 +12,7 @@ import { CreatorRibbon } from '@/components/challenges/CreatorBadge';
 import { Target, UserPlus } from 'lucide-react';
 import { getChallengeState, ChallengeStateResult } from '@/lib/utils/challengeState';
 import { cn } from '@/lib/utils';
-import { getTodayDateString } from '@/lib/utils/dates';
+import { format, subDays } from 'date-fns';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -76,16 +76,15 @@ export default async function DashboardPage() {
     }
   }
 
-  // Fetch today's entries for all active challenges
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayStr = getTodayDateString();
+  // Fetch recent entries for all active challenges (past 3 days to handle timezone differences)
+  // Client components will filter to find today's entries in user's local timezone
+  const threeDaysAgo = format(subDays(new Date(), 3), 'yyyy-MM-dd');
 
-  const { data: todayEntries } = await supabase
+  const { data: recentEntries } = await supabase
     .from('daily_entries')
     .select('participant_id, is_completed, entry_date')
     .in('participant_id', activeChallenges.map(p => p.id))
-    .eq('entry_date', todayStr);
+    .gte('entry_date', threeDaysAgo);
 
   // Calculate overall stats
   const totalPoints = activeChallenges.reduce((sum, p) => sum + (p.total_points || 0), 0);
@@ -105,11 +104,13 @@ export default async function DashboardPage() {
   }
 
   // Fetch featured challenges (both public and private) for sidebar - include ongoing challenges
+  // Note: Using server date for challenge filtering is acceptable (slight timezone offset is fine for discovery)
+  const serverTodayStr = format(new Date(), 'yyyy-MM-dd');
   const { data: featuredChallenges } = await supabase
     .from('challenges')
     .select('*')
     .lte('starts_at', new Date().toISOString())
-    .or(`ends_at.is.null,ends_at.gte.${getTodayDateString()}`)
+    .or(`ends_at.is.null,ends_at.gte.${serverTodayStr}`)
     .order('created_at', { ascending: false })
     .limit(10);
 
@@ -243,7 +244,7 @@ export default async function DashboardPage() {
             {/* Today's Progress Card */}
             <TodayProgressCard
               activeChallenges={activeChallenges}
-              todayEntries={todayEntries || []}
+              recentEntries={recentEntries || []}
             />
 
             {/* Active Challenges */}
@@ -255,7 +256,10 @@ export default async function DashboardPage() {
                   const challengeState = participation.challengeState as ChallengeStateResult;
                   if (!challenge) return null;
 
-                  const todayEntry = todayEntries?.find(e => e.participant_id === participation.id);
+                  // Filter recent entries for this participation
+                  const participantEntries = recentEntries?.filter(
+                    e => e.participant_id === participation.id
+                  ) || [];
 
                   return (
                     <ActiveChallengeCard
@@ -277,7 +281,7 @@ export default async function DashboardPage() {
                         creator_id: challenge.creator_id,
                       }}
                       challengeState={challengeState}
-                      todayEntry={todayEntry ? { is_completed: todayEntry.is_completed } : null}
+                      recentEntries={participantEntries}
                       currentUserId={user.id}
                     />
                   );

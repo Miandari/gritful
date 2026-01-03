@@ -1,5 +1,7 @@
 'use client';
 
+import { useMemo } from 'react';
+import { format } from 'date-fns';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,7 +30,7 @@ interface ActiveChallengeCardProps {
     creator_id: string;
   };
   challengeState: ChallengeStateResult;
-  todayEntry: { is_completed: boolean } | null;
+  recentEntries: { entry_date: string; is_completed: boolean }[];
   currentUserId: string;
 }
 
@@ -36,9 +38,17 @@ export function ActiveChallengeCard({
   participation,
   challenge,
   challengeState,
-  todayEntry,
+  recentEntries,
   currentUserId,
 }: ActiveChallengeCardProps) {
+  // Compute today's date on CLIENT for correct user timezone
+  const todayDate = useMemo(() => format(new Date(), 'yyyy-MM-dd'), []);
+
+  // Find today's entry from recent entries
+  const todayEntry = useMemo(
+    () => recentEntries.find(e => e.entry_date === todayDate) || null,
+    [recentEntries, todayDate]
+  );
   // Calculate dates on CLIENT for correct user timezone
   const today = new Date();
   today.setHours(0, 0, 0, 0);

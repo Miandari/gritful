@@ -1,6 +1,8 @@
 'use client';
 
+import { useMemo } from 'react';
 import Link from 'next/link';
+import { format } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -25,11 +27,13 @@ interface TodayChallengeCardProps {
     enable_perfect_day_bonus?: boolean;
     perfect_day_bonus_points?: number;
   };
-  entry: {
+  // Array of recent entries - client will filter to find today's entry
+  recentEntries: {
+    entry_date: string;
     is_completed: boolean;
     is_locked: boolean;
     [key: string]: any;
-  } | null;
+  }[];
   challengeState: ChallengeStateResult;
   onetimeCompletions: any[];
   periodicCompletions: any[];
@@ -37,11 +41,20 @@ interface TodayChallengeCardProps {
 
 export function TodayChallengeCard({
   challenge,
-  entry,
+  recentEntries,
   challengeState,
   onetimeCompletions,
   periodicCompletions,
 }: TodayChallengeCardProps) {
+  // Compute today's date on the CLIENT for correct user timezone
+  const todayDate = useMemo(() => format(new Date(), 'yyyy-MM-dd'), []);
+
+  // Find today's entry from the recent entries array
+  const entry = useMemo(
+    () => recentEntries.find((e) => e.entry_date === todayDate) || null,
+    [recentEntries, todayDate]
+  );
+
   const isCompleted = entry?.is_completed;
   const isLocked = entry?.is_locked;
   const isGracePeriod = challengeState?.state === 'grace_period';
@@ -124,6 +137,7 @@ export function TodayChallengeCard({
             participationId={challenge.participation_id}
             existingEntry={entry}
             isLocked={isLocked}
+            targetDate={todayDate}
             onetimeCompletions={onetimeCompletions}
             periodicCompletions={periodicCompletions}
           />

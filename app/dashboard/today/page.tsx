@@ -1,12 +1,12 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar } from 'lucide-react';
-import { format } from 'date-fns';
-import { getTodayDateString } from '@/lib/utils/dates';
+import { format, subDays } from 'date-fns';
 import Link from 'next/link';
 import { TodayChallengeCard } from '@/components/dashboard/TodayChallengeCard';
+import { TodaySummary } from '@/components/dashboard/TodaySummary';
 import { getChallengeState, ChallengeStateResult } from '@/lib/utils/challengeState';
 
 export default async function TodayPage() {
@@ -31,11 +31,13 @@ export default async function TodayPage() {
     .eq('status', 'active');
 
   const activeChallenges: any[] = [];
-  const todayEntries: any = {};
+  // Fetch entries for past 3 days to handle timezone differences
+  // Client will filter to find the correct "today" entry
+  const recentEntriesMap: Record<string, any[]> = {};
   const onetimeCompletionsMap: Record<string, any[]> = {};
   const periodicCompletionsMap: Record<string, any[]> = {};
-  const todayDate = getTodayDateString();
-  const todayFormatted = format(new Date(), 'EEEE, MMMM d, yyyy');
+  // Use a 3-day window to cover all timezone scenarios (max UTC offset is ~14 hours)
+  const threeDaysAgo = format(subDays(new Date(), 3), 'yyyy-MM-dd');
 
   if (myParticipations) {
     for (const participation of myParticipations) {
@@ -54,17 +56,16 @@ export default async function TodayPage() {
             challengeState,
           });
 
-          // Get today's entry if it exists
-          const { data: entry } = await supabase
+          // Get recent entries (past 3 days) to handle timezone differences
+          // Client component will filter to find today's entry in user's local timezone
+          const { data: entries } = await supabase
             .from('daily_entries')
             .select('*')
             .eq('participant_id', participation.id)
-            .eq('entry_date', todayDate)
-            .single();
+            .gte('entry_date', threeDaysAgo)
+            .order('entry_date', { ascending: false });
 
-          if (entry) {
-            todayEntries[participation.id] = entry;
-          }
+          recentEntriesMap[participation.id] = entries || [];
 
           // Get one-time task completions
           const { data: onetimeCompletions } = await supabase
@@ -89,10 +90,7 @@ export default async function TodayPage() {
   if (activeChallenges.length === 0) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Today&apos;s Tasks</h1>
-          <p className="mt-2 text-muted-foreground">{todayFormatted}</p>
-        </div>
+        <TodaySummary activeChallenges={[]} recentEntriesMap={{}} />
 
         <Card>
           <CardContent className="py-12 text-center">
@@ -117,41 +115,15 @@ export default async function TodayPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground">Today&apos;s Tasks</h1>
-        <p className="mt-2 text-muted-foreground">{todayFormatted}</p>
-      </div>
-
-      {/* Summary */}
-      <div className="mb-6 grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardDescription>Active Challenges</CardDescription>
-            <CardTitle className="text-2xl">{activeChallenges.length}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardDescription>Completed Today</CardDescription>
-            <CardTitle className="text-2xl">
-              {Object.keys(todayEntries).length}/{activeChallenges.length}
-            </CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardDescription>Current Streaks</CardDescription>
-            <CardTitle className="text-2xl">
-              {activeChallenges.reduce((sum, c) => sum + c.current_streak, 0)}
-            </CardTitle>
-          </CardHeader>
-        </Card>
-      </div>
+      {/* Header and Summary - client component for correct timezone */}
+      <TodaySummary
+        activeChallenges={activeChallenges}
+        recentEntriesMap={recentEntriesMap}
+      />
 
       {/* Challenge entries */}
       <div className="space-y-6">
         {activeChallenges.map((challenge) => {
-          const entry = todayEntries[challenge.participation_id];
           const challengeState = challenge.challengeState as ChallengeStateResult;
 
           return (
@@ -171,7 +143,7 @@ export default async function TodayPage() {
                 enable_perfect_day_bonus: challenge.enable_perfect_day_bonus,
                 perfect_day_bonus_points: challenge.perfect_day_bonus_points,
               }}
-              entry={entry || null}
+              recentEntries={recentEntriesMap[challenge.participation_id] || []}
               challengeState={challengeState}
               onetimeCompletions={onetimeCompletionsMap[challenge.participation_id] || []}
               periodicCompletions={periodicCompletionsMap[challenge.participation_id] || []}

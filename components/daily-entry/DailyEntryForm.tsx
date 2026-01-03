@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -99,6 +100,13 @@ export default function DailyEntryForm({
   );
   const [newAchievements, setNewAchievements] = useState<EarnedAchievement[]>([]);
 
+  // Compute effective date on CLIENT side - ensures correct user timezone
+  // This is the date that will be used when saving the entry
+  const effectiveDate = useMemo(
+    () => targetDate || format(new Date(), 'yyyy-MM-dd'),
+    [targetDate]
+  );
+
   // Filter metrics into daily, weekly, monthly, and one-time tasks, respecting date ranges
   const { dailyTasks, weeklyTasks, monthlyTasks, onetimeTasks } = useMemo(() => {
     const daily: Metric[] = [];
@@ -106,10 +114,8 @@ export default function DailyEntryForm({
     const monthly: Metric[] = [];
     const onetime: Metric[] = [];
 
-    // Parse the target date for comparison using parseLocalDate for correct timezone handling
-    const entryDate = targetDate
-      ? parseLocalDate(targetDate)
-      : (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; })();
+    // Parse the effective date for comparison using parseLocalDate for correct timezone handling
+    const entryDate = parseLocalDate(effectiveDate);
 
     // Helper to extract date string from ISO timestamp or date string
     const getDateString = (dateStr: string): string => {
@@ -174,7 +180,7 @@ export default function DailyEntryForm({
     });
 
     return { dailyTasks: daily, weeklyTasks: weekly, monthlyTasks: monthly, onetimeTasks: onetime };
-  }, [challenge.metrics, targetDate]);
+  }, [challenge.metrics, effectiveDate]);
 
   // Update form data when existingEntry changes (when user selects different date)
   useEffect(() => {
@@ -201,7 +207,7 @@ export default function DailyEntryForm({
         metricData: formData,
         isCompleted: true,
         notes: formData.notes || '',
-        targetDate: targetDate,
+        targetDate: effectiveDate,
       });
 
       if (!result.success) {

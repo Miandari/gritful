@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { format } from 'date-fns';
 import { calculateEntryScore } from '@/lib/utils/scoring';
-import { getTodayDateString, parseLocalDate } from '@/lib/utils/dates';
+import { parseLocalDate } from '@/lib/utils/dates';
 import { checkAndAwardAchievements } from '@/lib/achievements/checkAchievements';
 import type { EarnedAchievement } from '@/lib/achievements/types';
 
@@ -125,8 +125,9 @@ export async function saveDailyEntry(data: SaveEntryData) {
     }
 
     // Update streak if completed
+    // Pass the client's target date to ensure correct streak calculation across timezones
     if (data.isCompleted) {
-      await updateStreak(participation.id);
+      await updateStreak(participation.id, today);
     }
 
     // Update participant's total points
@@ -160,7 +161,7 @@ export async function saveDailyEntry(data: SaveEntryData) {
   }
 }
 
-async function updateStreak(participantId: string) {
+async function updateStreak(participantId: string, referenceDate: string) {
   const supabase = await createClient();
 
   try {
@@ -177,12 +178,12 @@ async function updateStreak(participantId: string) {
     }
 
     // Calculate current streak
+    // Use the client's reference date (YYYY-MM-DD) to ensure correct timezone handling
     let currentStreak = 0;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = parseLocalDate(referenceDate);
 
     for (let i = 0; i < entries.length; i++) {
-      // Use parseLocalDate to correctly handle YYYY-MM-DD strings in local timezone
+      // Use parseLocalDate to correctly handle YYYY-MM-DD strings
       const entryDate = parseLocalDate(entries[i].entry_date);
 
       const dayDiff = Math.floor((today.getTime() - entryDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -264,10 +265,10 @@ export async function deleteDailyEntry(entryId: string, challengeId: string) {
   }
 
   try {
-    // Get the entry and verify ownership
+    // Get the entry and verify ownership (include entry_date for streak calculation)
     const { data: entry, error: fetchError } = await supabase
       .from('daily_entries')
-      .select('id, participant_id, is_locked')
+      .select('id, participant_id, is_locked, entry_date')
       .eq('id', entryId)
       .single() as any;
 
@@ -304,7 +305,8 @@ export async function deleteDailyEntry(entryId: string, challengeId: string) {
     }
 
     // Update streak and total points
-    await updateStreak(entry.participant_id);
+    // Use the deleted entry's date as reference for consistent timezone handling
+    await updateStreak(entry.participant_id, entry.entry_date);
     await updateTotalPoints(entry.participant_id);
 
     // Revalidate paths
@@ -324,6 +326,9 @@ export async function deleteDailyEntry(entryId: string, challengeId: string) {
   }
 }
 
+// WARNING: The date parameter should always be provided by the client to ensure
+// correct timezone handling. The fallback to format(new Date()) uses server time
+// which may differ from the user's local date.
 export async function getDailyEntries(challengeId: string, date?: string) {
   const supabase = await createClient();
 
@@ -335,6 +340,7 @@ export async function getDailyEntries(challengeId: string, date?: string) {
     return { success: false, error: 'Not authenticated' };
   }
 
+  // Fallback to server date - callers should provide client's date to avoid timezone issues
   const targetDate = date || format(new Date(), 'yyyy-MM-dd');
 
   try {

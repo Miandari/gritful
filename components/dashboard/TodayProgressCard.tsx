@@ -1,19 +1,29 @@
 'use client';
 
+import { useMemo, useState } from 'react';
+import { format } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { CheckCircle2, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
-import { useState } from 'react';
 
 interface TodayProgressCardProps {
   activeChallenges: any[];
-  todayEntries: any[];
+  recentEntries: any[];
 }
 
-export function TodayProgressCard({ activeChallenges, todayEntries }: TodayProgressCardProps) {
+export function TodayProgressCard({ activeChallenges, recentEntries }: TodayProgressCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+
+  // Compute today's date on CLIENT for correct user timezone
+  const todayDate = useMemo(() => format(new Date(), 'yyyy-MM-dd'), []);
+
+  // Filter to today's entries only
+  const todayEntries = useMemo(
+    () => recentEntries.filter(e => e.entry_date === todayDate),
+    [recentEntries, todayDate]
+  );
 
   const completedCount = todayEntries.filter(e => e.is_completed).length;
   const totalCount = activeChallenges.length;
