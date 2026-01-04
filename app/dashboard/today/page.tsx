@@ -21,10 +21,17 @@ export default async function TodayPage() {
   }
 
   // Get user's active participations with challenge details
+  // Explicitly select fields to ensure current_streak is included (avoid * caching issues)
   const { data: myParticipations } = await supabase
     .from('challenge_participants')
     .select(`
-      *,
+      id,
+      user_id,
+      challenge_id,
+      status,
+      current_streak,
+      longest_streak,
+      total_points,
       challenges (*)
     `)
     .eq('user_id', user.id)
