@@ -3,8 +3,9 @@ import { createClient } from '@/lib/supabase/server';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import Link from 'next/link';
+import { TodayEntryCard } from '@/components/challenges/TodayEntryCard';
 import CopyInviteCodeButton from '@/components/challenges/CopyInviteCodeButton';
 import InviteLinkCard from '@/components/challenges/InviteLinkCard';
 import { AddOnetimeTaskButton } from '@/components/challenges/AddOnetimeTaskButton';
@@ -47,6 +48,9 @@ export default async function ChallengeOverviewPage({
   let isParticipant = false;
   let myParticipation: any = null;
   let myEntries: any[] = [];
+  let recentEntries: any[] = [];
+  let periodicCompletions: any[] = [];
+  let onetimeCompletions: any[] = [];
   let myStats = {
     currentStreak: 0,
     longestStreak: 0,
@@ -79,6 +83,33 @@ export default async function ChallengeOverviewPage({
 
       // Calculate statistics (totalDays and completionRate are calculated on client for correct timezone)
       const completedDays = myEntries.filter(e => e.is_completed).length;
+
+      // Fetch recent entries for TodayEntryCard (3-day window for timezone safety)
+      const threeDaysAgo = format(subDays(new Date(), 3), 'yyyy-MM-dd');
+      const { data: recentEntriesData } = await supabase
+        .from('daily_entries')
+        .select('*')
+        .eq('participant_id', myParticipation.id)
+        .gte('entry_date', threeDaysAgo)
+        .order('entry_date', { ascending: false });
+
+      recentEntries = recentEntriesData || [];
+
+      // Fetch periodic task completions (weekly/monthly)
+      const { data: periodicData } = await supabase
+        .from('periodic_task_completions')
+        .select('*')
+        .eq('participant_id', myParticipation.id);
+
+      periodicCompletions = periodicData || [];
+
+      // Fetch one-time task completions
+      const { data: onetimeData } = await supabase
+        .from('onetime_task_completions')
+        .select('*')
+        .eq('participant_id', myParticipation.id);
+
+      onetimeCompletions = onetimeData || [];
 
       myStats = {
         currentStreak: myParticipation.current_streak || 0,
@@ -254,6 +285,24 @@ export default async function ChallengeOverviewPage({
               </CardContent>
             </Card>
           )}
+
+          {/* Today's Entry Card */}
+          <div className="mt-4">
+            <TodayEntryCard
+              challengeId={challenge.id}
+              participationId={myParticipation.id}
+              metrics={(challenge.metrics as any[]) || []}
+              recentEntries={recentEntries}
+              periodicCompletions={periodicCompletions}
+              onetimeCompletions={onetimeCompletions}
+              currentStreak={myStats.currentStreak}
+              lockEntriesAfterDay={challenge.lock_entries_after_day}
+              enableStreakBonus={challenge.enable_streak_bonus}
+              streakBonusPoints={challenge.streak_bonus_points}
+              enablePerfectDayBonus={challenge.enable_perfect_day_bonus}
+              perfectDayBonusPoints={challenge.perfect_day_bonus_points}
+            />
+          </div>
         </div>
       )}
 
