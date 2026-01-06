@@ -1,7 +1,9 @@
 'use client';
 
+import { useMemo } from 'react';
 import { format } from 'date-fns';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { calculateDisplayStreak } from '@/lib/utils/dates';
 
 interface TodaySummaryProps {
   activeChallenges: {
@@ -13,7 +15,7 @@ interface TodaySummaryProps {
 
 export function TodaySummary({ activeChallenges, recentEntriesMap }: TodaySummaryProps) {
   // Compute today's date string on the CLIENT for correct user timezone
-  const todayDate = format(new Date(), 'yyyy-MM-dd');
+  const todayDate = useMemo(() => format(new Date(), 'yyyy-MM-dd'), []);
   const todayFormatted = format(new Date(), 'EEEE, MMMM d, yyyy');
 
   // Count completed entries for today (in user's timezone)
@@ -24,7 +26,14 @@ export function TodaySummary({ activeChallenges, recentEntriesMap }: TodaySummar
     );
   }).length;
 
-  const totalStreaks = activeChallenges.reduce((sum, c) => sum + (c.current_streak || 0), 0);
+  // Calculate total streaks from entries (not stored values which may be stale)
+  const totalStreaks = useMemo(() => {
+    return activeChallenges.reduce((sum, challenge) => {
+      const entries = recentEntriesMap[challenge.participation_id] || [];
+      const streak = calculateDisplayStreak(entries, todayDate);
+      return sum + streak;
+    }, 0);
+  }, [activeChallenges, recentEntriesMap, todayDate]);
 
   return (
     <>

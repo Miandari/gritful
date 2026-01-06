@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle, Clock, Infinity, ArrowUpRight } from 'lucide-react';
 import { ChallengeStateResult } from '@/lib/utils/challengeState';
 import { cn } from '@/lib/utils';
-import { parseLocalDate, getLocalDateFromISO } from '@/lib/utils/dates';
+import { parseLocalDate, getLocalDateFromISO, calculateDisplayStreak } from '@/lib/utils/dates';
 import DailyEntryForm from '@/components/daily-entry/DailyEntryForm';
 
 interface TodayChallengeCardProps {
@@ -60,6 +60,12 @@ export function TodayChallengeCard({
   const isGracePeriod = challengeState?.state === 'grace_period';
   const isOngoing = challenge.ends_at === null;
 
+  // Calculate display streak from entries (not stored value which may be stale)
+  const displayStreak = useMemo(
+    () => calculateDisplayStreak(recentEntries, todayDate),
+    [recentEntries, todayDate]
+  );
+
   // Calculate days elapsed on CLIENT for correct timezone
   const todayMidnight = new Date();
   todayMidnight.setHours(0, 0, 0, 0);
@@ -108,7 +114,7 @@ export function TodayChallengeCard({
                 {challengeState.daysRemainingInGrace}d grace
               </Badge>
             )}
-            <Badge variant="secondary">{challenge.current_streak} day streak</Badge>
+            <Badge variant="secondary">{displayStreak} day streak</Badge>
             {isCompleted && (
               <Badge variant="default" className="bg-green-600 dark:bg-green-600">
                 <CheckCircle className="mr-1 h-3 w-3" />

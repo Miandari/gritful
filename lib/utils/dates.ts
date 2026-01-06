@@ -89,3 +89,51 @@ export function getTodayDateStringWithTimezone(timezone: string): string {
 export function getUserTimezone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
+
+/**
+ * Calculate the current streak at display time.
+ *
+ * IMPORTANT: The stored `current_streak` in the database is only updated when
+ * saving an entry. If a user doesn't log for several days, the stored value
+ * becomes stale. Use this function to calculate the accurate streak for display.
+ *
+ * A streak is the count of consecutive completed days ending with today.
+ * If today is not completed, the streak is 0.
+ *
+ * @param entries - Array of entries with entry_date (YYYY-MM-DD) and is_completed
+ * @param todayDate - Today's date in YYYY-MM-DD format (should be computed client-side)
+ * @returns The current streak count
+ */
+export function calculateDisplayStreak(
+  entries: { entry_date: string; is_completed: boolean }[],
+  todayDate: string
+): number {
+  // Filter to only completed entries
+  const completedEntries = entries.filter(e => e.is_completed);
+
+  if (completedEntries.length === 0) {
+    return 0;
+  }
+
+  // Create a Set of completed dates for fast lookup
+  const completedDates = new Set(completedEntries.map(e => e.entry_date));
+
+  // Start from today and count backwards
+  let streak = 0;
+  const today = parseLocalDate(todayDate);
+
+  for (let i = 0; i < 1000; i++) { // Safety limit
+    const checkDate = new Date(today);
+    checkDate.setDate(today.getDate() - i);
+    const dateStr = toLocalDateString(checkDate);
+
+    if (completedDates.has(dateStr)) {
+      streak++;
+    } else {
+      // Gap found - streak ends
+      break;
+    }
+  }
+
+  return streak;
+}

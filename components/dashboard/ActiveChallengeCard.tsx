@@ -10,7 +10,7 @@ import { CreatorRibbon } from '@/components/challenges/CreatorBadge';
 import { Infinity, Clock } from 'lucide-react';
 import { ChallengeStateResult } from '@/lib/utils/challengeState';
 import { cn } from '@/lib/utils';
-import { parseLocalDate, getLocalDateFromISO } from '@/lib/utils/dates';
+import { parseLocalDate, getLocalDateFromISO, calculateDisplayStreak } from '@/lib/utils/dates';
 
 interface ActiveChallengeCardProps {
   participation: {
@@ -49,6 +49,13 @@ export function ActiveChallengeCard({
     () => recentEntries.find(e => e.entry_date === todayDate) || null,
     [recentEntries, todayDate]
   );
+
+  // Calculate display streak from entries (not stored value which may be stale)
+  const displayStreak = useMemo(
+    () => calculateDisplayStreak(recentEntries, todayDate),
+    [recentEntries, todayDate]
+  );
+
   // Calculate dates on CLIENT for correct user timezone
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -122,7 +129,7 @@ export function ActiveChallengeCard({
             </div>
             <div>
               <div className="text-muted-foreground text-xs">Streak</div>
-              <div className="font-semibold">{participation.current_streak}</div>
+              <div className="font-semibold">{displayStreak}</div>
             </div>
             <div>
               <div className="text-muted-foreground text-xs">Today</div>
