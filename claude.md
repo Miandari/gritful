@@ -187,6 +187,30 @@ Should be able to use:
 
 ---
 
+### 2. Investigate `participant_details` View Usage
+**Status**: Needs investigation
+
+**Background**:
+A database view `public.participant_details` exists that joins `challenge_participants` with `profiles`. It was flagged by Supabase security advisor for using SECURITY DEFINER (fixed in migration `20260106000001_fix_security_issues.sql` to use SECURITY INVOKER).
+
+**View Definition**:
+```sql
+SELECT cp.id, cp.challenge_id, cp.user_id, cp.status, cp.current_streak, cp.longest_streak, p.username, p.avatar_url
+FROM challenge_participants cp
+LEFT JOIN profiles p ON p.id = cp.user_id;
+```
+
+**Investigation Needed**:
+1. This view is NOT used anywhere in the codebase (we fetch participants and profiles separately)
+2. It may have been created as a workaround for the schema cache issue (Pinned Issue #1)
+3. Determine if we should:
+   - Start using this view instead of separate queries (cleaner code)
+   - Or drop it entirely (less database objects to maintain)
+
+**Decision**: TBD - either adopt the view or remove it
+
+---
+
 ## Recent Features Implemented
 
 ### Challenge Template System (2025-01-13)
