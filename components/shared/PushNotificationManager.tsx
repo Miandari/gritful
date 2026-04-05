@@ -16,9 +16,10 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 
 interface PushNotificationManagerProps {
   className?: string;
+  onSubscriptionChange?: (subscribed: boolean) => void;
 }
 
-export function PushNotificationManager({ className }: PushNotificationManagerProps) {
+export function PushNotificationManager({ className, onSubscriptionChange }: PushNotificationManagerProps) {
   const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>('default');
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -27,6 +28,7 @@ export function PushNotificationManager({ className }: PushNotificationManagerPr
     if (!('PushManager' in window) || !('Notification' in window)) {
       setPermission('unsupported');
       setLoading(false);
+      onSubscriptionChange?.(false);
       return;
     }
 
@@ -35,8 +37,10 @@ export function PushNotificationManager({ className }: PushNotificationManagerPr
     // Check existing subscription
     navigator.serviceWorker.ready.then((registration) => {
       registration.pushManager.getSubscription().then((sub) => {
-        setIsSubscribed(!!sub);
+        const subscribed = !!sub;
+        setIsSubscribed(subscribed);
         setLoading(false);
+        onSubscriptionChange?.(subscribed);
       });
     });
   }, []);
@@ -88,10 +92,16 @@ export function PushNotificationManager({ className }: PushNotificationManagerPr
       }
 
       setIsSubscribed(true);
+      onSubscriptionChange?.(true);
       toast.success('Notifications enabled');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to subscribe:', err);
-      toast.error('Failed to enable notifications');
+      const message = err?.message || String(err);
+      if (message.includes('permission') || message.includes('denied')) {
+        toast.error('Notification permission was denied. Check your browser/OS settings.');
+      } else {
+        toast.error(`Failed to enable notifications: ${message}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -116,6 +126,7 @@ export function PushNotificationManager({ className }: PushNotificationManagerPr
       }
 
       setIsSubscribed(false);
+      onSubscriptionChange?.(false);
       toast.success('Notifications disabled');
     } catch (err) {
       console.error('Failed to unsubscribe:', err);

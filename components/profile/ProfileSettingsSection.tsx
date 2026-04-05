@@ -49,6 +49,7 @@ export default function ProfileSettingsSection({ preferences }: ProfileSettingsS
   });
 
   const [isSaving, setIsSaving] = useState<string | null>(null);
+  const [pushSubscribed, setPushSubscribed] = useState(false);
 
   const handleToggle = async (key: string, value: boolean) => {
     setIsSaving(key);
@@ -81,9 +82,9 @@ export default function ProfileSettingsSection({ preferences }: ProfileSettingsS
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          <PushNotificationManager />
+          <PushNotificationManager onSubscriptionChange={setPushSubscribed} />
 
-          <div className="border-t pt-4 space-y-4" style={{ opacity: settings.app_notifications_enabled ? 1 : 0.5 }}>
+          <div className="border-t pt-4 space-y-4" style={{ opacity: pushSubscribed ? 1 : 0.4, pointerEvents: pushSubscribed ? 'auto' : 'none' }}>
             <p className="text-sm text-muted-foreground">Choose what to receive:</p>
 
             {/* Reminders */}
