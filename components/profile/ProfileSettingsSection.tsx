@@ -7,6 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { updatePreferences } from '@/app/actions/profile';
 import toast from 'react-hot-toast';
 import { Mail, Bell, Shield, Palette } from 'lucide-react';
+import { PushNotificationManager } from '@/components/shared/PushNotificationManager';
 
 interface ProfileSettingsSectionProps {
   preferences: {
@@ -172,7 +173,7 @@ export default function ProfileSettingsSection({ preferences }: ProfileSettingsS
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="app_notifications_enabled" className="text-base font-medium">
@@ -188,6 +189,10 @@ export default function ProfileSettingsSection({ preferences }: ProfileSettingsS
               onCheckedChange={(checked) => handleToggle('app_notifications_enabled', checked)}
               disabled={isSaving === 'app_notifications_enabled'}
             />
+          </div>
+
+          <div className="border-t pt-4">
+            <PushNotificationManager />
           </div>
         </CardContent>
       </Card>

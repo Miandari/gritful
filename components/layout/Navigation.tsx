@@ -149,6 +149,11 @@ export function Navigation() {
   }, [user, supabase]);
 
   const handleLogout = async () => {
+    // Clean up push subscription before signing out
+    try {
+      const { cleanupPushOnLogout } = await import('@/components/shared/PushNotificationManager');
+      await cleanupPushOnLogout();
+    } catch {}
     await supabase.auth.signOut();
     toast.success('Logged out successfully');
     router.push('/');

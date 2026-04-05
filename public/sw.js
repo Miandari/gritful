@@ -94,7 +94,102 @@ self.addEventListener('fetch', (event) => {
   }
 });
 
-// === PUSH NOTIFICATIONS (Phase 2) ===
-// self.addEventListener('push', ...)
-// self.addEventListener('notificationclick', ...)
-// self.addEventListener('pushsubscriptionchange', ...)
+// === PUSH NOTIFICATIONS ===
+
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+
+  let data;
+  try {
+    data = event.data.json();
+  } catch {
+    data = { title: 'Gritful', body: event.data.text() };
+  }
+
+  const { title = 'Gritful', body = '', url } = data;
+
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      icon: '/icons/icon-192x192.png',
+      badge: '/icons/icon-192x192.png',
+      data: { url: url || '/dashboard' },
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = new URL(
+    event.notification.data?.url || '/dashboard',
+    self.location.origin
+  ).href;
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window' }).then((windowClients) => {
+      const existing = windowClients[0];
+      if (existing) {
+        existing.focus();
+        existing.navigate(targetUrl);
+      } else {
+        clients.openWindow(targetUrl);
+      }
+    })
+  );
+});
+
+self.addEventListener('pushsubscriptionchange', (event) => {
+  // Browser rotated push keys -- re-subscribe and update backend
+  event.waitUntil(
+    (async () => {
+      try {
+        const newSubscription = await self.registration.pushManager.subscribe(
+          event.oldSubscription?.options || {
+            userVisibleOnly: true,
+          }
+        );
+
+        const sub = newSubscription.toJSON();
+        const oldEndpoint = event.oldSubscription?.endpoint;
+
+        const response = await fetch('/api/push-subscription', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            endpoint: sub.endpoint,
+            keys: sub.keys,
+            oldEndpoint,
+          }),
+        });
+
+        if (!response.ok) {
+          // Auth may have expired -- store in IndexedDB for later sync
+          const db = await openSyncDB();
+          const tx = db.transaction('pending-subscriptions', 'readwrite');
+          tx.objectStore('pending-subscriptions').put({
+            endpoint: sub.endpoint,
+            keys: sub.keys,
+            oldEndpoint,
+            timestamp: Date.now(),
+          });
+        }
+      } catch (err) {
+        console.error('pushsubscriptionchange failed:', err);
+      }
+    })()
+  );
+});
+
+// IndexedDB helper for storing pending subscription updates
+function openSyncDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('gritful-push-sync', 1);
+    request.onupgradeneeded = () => {
+      request.result.createObjectStore('pending-subscriptions', {
+        keyPath: 'endpoint',
+      });
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
