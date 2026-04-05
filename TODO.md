@@ -60,13 +60,12 @@
   - "3 people joined your challenge" style grouping
 
 ### Phase 4: Automated Triggers
-- [ ] **4a: Daily reminders**
-  - pg_cron job runs every 15 minutes
-  - Queries users whose reminder_time falls in current 15-min window
-  - Checks if user hasn't logged today's entry
-  - Calls send-push-notification Edge Function
+- [x] **4a: Daily reminders** (migration needs to be applied via Dashboard)
+  - `user_has_pending_tasks()` function checks all frequencies (daily/weekly/monthly/onetime)
+  - pg_cron job runs every 15 minutes, checks reminder_time in user's timezone
+  - Only fires if user has push_reminders enabled, has subscriptions, and has pending tasks
   - Push only (ephemeral, not stored in notifications table)
-  - net.http_post is async/fire-and-forget
+  - Requires: `ALTER DATABASE postgres SET app.settings.service_role_key` and `app.settings.supabase_url`
 
 - [ ] **4b: Milestone notifications**
   - Streak milestones (7, 14, 30, 60, 100 days)
