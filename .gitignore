@@ -57,3 +57,6 @@ next-env.d.ts
 # Local Supabase
 .supabase/
 supabase/.temp/
+
+# Playwright
+.playwright-mcp/
