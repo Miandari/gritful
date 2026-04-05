@@ -3,19 +3,24 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
+export interface NotificationData {
+  challenge_id?: string;
+  request_id?: string;
+  requester_id?: string;
+  requester_username?: string;
+  status?: string;
+  url?: string;
+  [key: string]: unknown;
+}
+
 export interface Notification {
   id: string;
   user_id: string;
   type: string;
   title: string;
   message: string | null;
-  data: {
-    challenge_id?: string;
-    request_id?: string;
-    requester_id?: string;
-    requester_username?: string;
-    status?: string;
-  };
+  data: NotificationData;
+  category: 'personal' | 'social' | 'leaderboard' | 'system';
   read: boolean;
   created_at: string;
 }
@@ -23,7 +28,11 @@ export interface Notification {
 /**
  * Get notifications for the current user
  */
-export async function getNotifications(limit: number = 50, offset: number = 0): Promise<{ notifications: Notification[], error?: string }> {
+export async function getNotifications(
+  limit: number = 50,
+  cursor?: string,
+  category?: string
+): Promise<{ notifications: Notification[], error?: string }> {
   const supabase = await createClient();
 
   const {
@@ -34,12 +43,23 @@ export async function getNotifications(limit: number = 50, offset: number = 0): 
     return { notifications: [], error: 'Not authenticated' };
   }
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('notifications')
     .select('*')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1);
+    .order('id', { ascending: false })
+    .limit(limit);
+
+  if (cursor) {
+    query = query.lt('created_at', cursor);
+  }
+
+  if (category) {
+    query = query.eq('category', category);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error('Error fetching notifications:', error);

@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar, Trophy, Target, MapPin, Globe, Twitter, Github, Instagram, Award } from 'lucide-react';
+import { BackButton } from '@/components/shared/BackButton';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { CompactAchievementGrid } from '@/components/achievements/AchievementGrid';
@@ -144,6 +145,11 @@ export default async function PublicProfilePage({
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-4xl px-4 sm:px-6 py-6 sm:py-8">
+        {/* Back button */}
+        <div className="mb-4">
+          <BackButton />
+        </div>
+
         {/* Header */}
         <Card className="mb-6">
           <CardContent className="p-6">

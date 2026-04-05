@@ -26,6 +26,12 @@ interface ProfileTabsProps {
     email_join_requests: boolean;
     email_weekly_summary: boolean;
     app_notifications_enabled: boolean;
+    push_reminders: boolean;
+    push_milestones: boolean;
+    push_challenge_activity: boolean;
+    push_leaderboard: boolean;
+    reminder_time: string;
+    reminder_timezone: string;
     profile_visibility: string;
     show_email: boolean;
     theme: string;

@@ -6,6 +6,7 @@ import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from '@/components/theme-provider';
 import { ServiceWorkerRegistrar } from '@/components/shared/ServiceWorkerRegistrar';
 import { InstallPrompt } from '@/components/shared/InstallPrompt';
+import { TimezoneSync } from '@/components/shared/TimezoneSync';
 import { useState } from 'react';
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -43,6 +44,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <ReactQueryDevtools initialIsOpen={false} />
         <ServiceWorkerRegistrar />
         <InstallPrompt />
+        <TimezoneSync />
       </QueryClientProvider>
     </ThemeProvider>
   );

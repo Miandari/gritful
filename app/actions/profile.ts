@@ -106,7 +106,7 @@ export async function updateProfile(data: {
  * Update user preferences
  */
 export async function updatePreferences(data: {
-  // Email preferences
+  // Email preferences (existing)
   email_notifications_enabled?: boolean;
   email_daily_reminder?: boolean;
   email_challenge_updates?: boolean;
@@ -115,6 +115,22 @@ export async function updatePreferences(data: {
 
   // App preferences
   app_notifications_enabled?: boolean;
+
+  // Per-category push toggles
+  push_reminders?: boolean;
+  push_milestones?: boolean;
+  push_challenge_activity?: boolean;
+  push_leaderboard?: boolean;
+
+  // Per-category email toggles (schema-ready, not wired up)
+  email_reminders?: boolean;
+  email_milestones?: boolean;
+  email_challenge_activity?: boolean;
+  email_leaderboard?: boolean;
+
+  // Reminder settings
+  reminder_time?: string;
+  reminder_timezone?: string;
 
   // Privacy settings
   profile_visibility?: 'public' | 'private' | 'friends';
@@ -173,5 +189,48 @@ export async function updatePreferences(data: {
   } catch (error) {
     console.error('Unexpected error updating preferences:', error);
     return { success: false, error: 'An unexpected error occurred' };
+  }
+}
+
+/**
+ * Sync browser timezone to user_preferences.
+ * Only updates if the current value is still 'UTC' (never overwrite explicit choice).
+ * Called by TimezoneSync component on first authenticated page load.
+ */
+export async function syncTimezone(timezone: string) {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { success: false };
+
+  try {
+    const { data: prefs } = await supabase
+      .from('user_preferences')
+      .select('reminder_timezone')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    // Only update if still defaulted to UTC
+    if (prefs && prefs.reminder_timezone !== 'UTC') {
+      return { success: true };
+    }
+
+    if (prefs) {
+      await supabase
+        .from('user_preferences')
+        .update({ reminder_timezone: timezone })
+        .eq('user_id', user.id);
+    } else {
+      await supabase
+        .from('user_preferences')
+        .insert({ user_id: user.id, reminder_timezone: timezone });
+    }
+
+    return { success: true };
+  } catch {
+    return { success: false };
   }
 }

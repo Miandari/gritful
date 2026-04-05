@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Settings, MoreVertical, Users, Infinity } from 'lucide-react';
+import { BackButton } from '@/components/shared/BackButton';
 import Link from 'next/link';
 import DeleteChallengeButton from '@/components/challenges/DeleteChallengeButton';
 import LeaveChallengeButton from '@/components/challenges/LeaveChallengeButton';
@@ -140,7 +141,10 @@ export default async function ChallengeLayout({
         <div className="mb-6 sm:mb-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex-1 min-w-0">
-              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{challenge.name}</h1>
+              <div className="flex items-center gap-3 mb-1">
+                <BackButton />
+                <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{challenge.name}</h1>
+              </div>
               {challenge.description && (
                 <p className="mt-2 text-sm sm:text-base text-muted-foreground">{challenge.description}</p>
               )}
