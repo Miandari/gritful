@@ -108,9 +108,8 @@ export default function ProfileSettingsSection({ preferences }: ProfileSettingsS
                   <Label htmlFor="reminder_time" className="text-muted-foreground whitespace-nowrap">
                     Remind me at
                   </Label>
-                  <input
+                  <select
                     id="reminder_time"
-                    type="time"
                     value={settings.reminder_time}
                     onChange={async (e) => {
                       const value = e.target.value;
@@ -121,7 +120,16 @@ export default function ProfileSettingsSection({ preferences }: ProfileSettingsS
                       }
                     }}
                     className="h-8 rounded-md border border-input bg-background px-2 text-sm"
-                  />
+                  >
+                    {Array.from({ length: 96 }, (_, i) => {
+                      const h = Math.floor(i / 4).toString().padStart(2, '0');
+                      const m = (i % 4 * 15).toString().padStart(2, '0');
+                      const value = `${h}:${m}`;
+                      const hour12 = ((Math.floor(i / 4) % 12) || 12);
+                      const ampm = Math.floor(i / 4) < 12 ? 'AM' : 'PM';
+                      return <option key={value} value={value}>{hour12}:{m} {ampm}</option>;
+                    })}
+                  </select>
                   <span className="text-xs text-muted-foreground">
                     ({settings.reminder_timezone.replace(/_/g, ' ')})
                   </span>
