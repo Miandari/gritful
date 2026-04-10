@@ -22,7 +22,7 @@
 - [x] Push cleanup on logout
 - [x] End-to-end push delivery tested and working
 
-### Phase 3: Notification Center Redesign -- IN PROGRESS
+### Phase 3: Notification Center Redesign -- DONE
 - [x] **3a: Database schema updates** (code done, migration needs to be applied via Dashboard)
   - Expanded notification types (milestone, leaderboard, participant_joined, system)
   - Added `category` column (personal / social / leaderboard / system)
@@ -60,12 +60,14 @@
   - "3 people joined your challenge" style grouping
 
 ### Phase 4: Automated Triggers
-- [x] **4a: Daily reminders** (migration needs to be applied via Dashboard)
-  - `user_has_pending_tasks()` function checks all frequencies (daily/weekly/monthly/onetime)
-  - pg_cron job runs every 15 minutes, checks reminder_time in user's timezone
-  - Only fires if user has push_reminders enabled, has subscriptions, and has pending tasks
+- [x] **4a: Daily reminders**
+  - `user_has_pending_tasks()` checks all frequencies (daily/weekly/monthly/onetime)
+  - `get_reminder_eligible_users()` RPC returns users due for reminder in current 15-min window
+  - `process-reminders` Edge Function queries eligible users and sends pushes via web-push
+  - Triggered by Supabase Dashboard cron (*/15) -- pg_net can't call Edge Functions on same project
+  - JWT verification OFF on process-reminders (only called by cron)
   - Push only (ephemeral, not stored in notifications table)
-  - Requires: `ALTER DATABASE postgres SET app.settings.service_role_key` and `app.settings.supabase_url`
+  - Reminder time picker constrained to 15-minute intervals
 
 - [ ] **4b: Milestone notifications**
   - Streak milestones (7, 14, 30, 60, 100 days)
@@ -91,4 +93,5 @@
 - [ ] Investigate participant_details view -- adopt or drop
 - [ ] Fix Supabase schema cache issue (foreign key joins)
 - [ ] Run temp_add_threshold_type.sql migration
-- [ ] Mobile testing (iOS Add to Home Screen, Android install + push)
+- [x] Mobile testing (iOS PWA install + push working)
+- [ ] Android testing (install + push)
