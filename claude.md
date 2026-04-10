@@ -553,17 +553,35 @@ CREATE TABLE message_read_receipts (
 - **Spam prevention**: Proper DNS setup, warming strategy, unsubscribe links
 - **User trust**: Let users opt-in to additional emails vs forcing them
 
-### Reminder System (Web Push Notifications - Future)
-- [ ] **Implement Daily Reminder Notifications**
-  - Set up notification service (Web Push API or external service)
-  - Create backend endpoints for scheduling reminders
-  - Handle notification permissions
+### Reminder System (Web Push Notifications) -- DONE
+- [x] PWA with service worker, manifest, install prompts
+- [x] Push notification infrastructure (VAPID, web-push, push_subscriptions table)
+- [x] Per-category push settings (Reminders, Milestones, Challenge Activity, Leaderboard)
+- [x] Reminder time picker (15-min intervals) with automatic timezone detection
+- [x] Notification center with chronological feed, category filters, realtime updates
+- [x] Daily reminders via process-reminders Edge Function + Supabase Dashboard cron
+- [x] `user_has_pending_tasks()` checks all task frequencies (daily/weekly/monthly/onetime)
+- [x] `maybeSendPush()` helper decouples notification persistence from push delivery
 
-- [ ] **Add Reminder Settings Page**
-  - Time selection for daily reminders
-  - Notification preferences (email, push, SMS)
-  - Per-challenge reminder customization
-  - Snooze options
+### Key Notification/Push Files:
+- `/lib/notifications/send.ts` - maybeSendPush() helper
+- `/components/shared/PushNotificationManager.tsx` - Push toggle + subscription management
+- `/components/notifications/NotificationFeed.tsx` - Notification center feed
+- `/components/shared/ServiceWorkerRegistrar.tsx` - SW registration + IndexedDB sync
+- `/components/shared/InstallPrompt.tsx` - Cross-platform PWA install prompt
+- `/components/shared/TimezoneSync.tsx` - Browser timezone detection
+- `/components/shared/BackButton.tsx` - Reusable back navigation for PWA
+- `/public/sw.js` - Service worker (caching + push handlers)
+- `/public/manifest.webmanifest` - PWA manifest
+- `/supabase/functions/send-push-notification/index.ts` - Push delivery Edge Function
+- `/supabase/functions/process-reminders/index.ts` - Daily reminder Edge Function
+- `/app/api/push-subscription/route.ts` - Subscription management API route
+
+### Known Push/PWA Limitations:
+- pg_net cannot call Edge Functions on the same Supabase project (DNS/routing) -- use Dashboard cron
+- JWT verification must be OFF on process-reminders Edge Function
+- iOS requires PWA added to home screen for push (16.4+), aggressively purges SW cache after 7 days
+- VAPID keys must be in both .env.local and Vercel env vars (NEXT_PUBLIC_VAPID_PUBLIC_KEY is baked into client bundle at build time)
 
 ### UX Improvements
 - [ ] **Participant Section for Each Challenge** - Add dedicated participants tab/section to challenge detail page
@@ -696,11 +714,18 @@ git add . && git commit && git push
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY` (for admin operations)
 - `RESEND_API_KEY` (for email service)
+- `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (for push subscriptions -- baked into client bundle)
+- `VAPID_PRIVATE_KEY` (for server-side push via maybeSendPush)
+
+### Supabase Vault Secrets (for pg_cron / Edge Functions)
+- `service_role_key` - used by process-reminders cron trigger
+- `supabase_url` - project URL for internal API calls
+- `anon_key` - anon key for Edge Function auth
 
 ---
 
 ## Tech Stack
-- **Framework**: Next.js 15 (App Router)
+- **Framework**: Next.js 16 (App Router)
 - **Database**: Supabase (PostgreSQL)
 - **Auth**: Supabase Auth
 - **Styling**: Tailwind CSS + shadcn/ui
@@ -708,4 +733,4 @@ git add . && git commit && git push
 
 ---
 
-*Last updated: 2025-01-13*
+*Last updated: 2026-04-09*
