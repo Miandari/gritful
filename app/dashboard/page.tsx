@@ -62,7 +62,7 @@ export default async function DashboardPage() {
       .order('created_at', { ascending: false })
       .limit(10),
     supabase
-      .from('join_requests')
+      .from('challenge_join_requests')
       .select('challenge_id, status')
       .eq('user_id', user.id)
       .in('status', ['pending', 'approved']),
