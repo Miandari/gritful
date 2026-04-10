@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
@@ -11,12 +12,14 @@ import { ActiveChallengeCard } from '@/components/dashboard/ActiveChallengeCard'
 import { CreatorRibbon } from '@/components/challenges/CreatorBadge';
 import { Target, UserPlus } from 'lucide-react';
 import { getChallengeState, ChallengeStateResult } from '@/lib/utils/challengeState';
-import { cn } from '@/lib/utils';
 import { format, subDays } from 'date-fns';
 
+// Top-level dashboard page. Does only the auth check + Suspense composition
+// so it can return JSX (and flush the streamed shell) as early as possible.
+// All data fetching happens inside the child components, each behind its
+// own Suspense boundary so fast sections paint before slow ones.
 export default async function DashboardPage() {
   const supabase = await createClient();
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -25,35 +28,85 @@ export default async function DashboardPage() {
     redirect('/login');
   }
 
+  return (
+    <div className="space-y-6">
+      <Suspense fallback={<WelcomeHeaderSkeleton />}>
+        <WelcomeHeader userId={user.id} />
+      </Suspense>
+      <Suspense fallback={<DashboardContentSkeleton />}>
+        <DashboardContent userId={user.id} />
+      </Suspense>
+    </div>
+  );
+}
+
+// =====================================================================
+// Welcome header — fast path. Only depends on a single-row profile query
+// (select by primary key), so it resolves and paints almost instantly.
+// =====================================================================
+
+async function WelcomeHeader({ userId }: { userId: string }) {
+  const supabase = await createClient();
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('username')
+    .eq('id', userId)
+    .single();
+
+  return (
+    <div>
+      <h1 className="text-3xl font-bold text-foreground">
+        Welcome back, {profile?.username || 'there'}!
+      </h1>
+    </div>
+  );
+}
+
+function WelcomeHeaderSkeleton() {
+  return (
+    <div>
+      <div className="h-9 w-64 animate-pulse rounded-md bg-muted" />
+    </div>
+  );
+}
+
+// =====================================================================
+// Main dashboard content — the heavy path. Runs all the queries from
+// Phase 1 in two parallel batches, then renders the full grid. Wrapped
+// in its own Suspense so the welcome header can stream in first.
+// =====================================================================
+
+async function DashboardContent({ userId }: { userId: string }) {
+  const supabase = await createClient();
+
   // Pre-compute date strings used by multiple queries below
   const threeDaysAgo = format(subDays(new Date(), 3), 'yyyy-MM-dd');
   const serverTodayStr = format(new Date(), 'yyyy-MM-dd');
 
-  // Batch A: all queries whose only dependency is user.id run in parallel.
+  // Batch A: all queries whose only dependency is userId run in parallel.
+  // (Profile has moved to WelcomeHeader and is no longer in this batch.)
   const [
-    { data: profile },
     { data: myParticipations },
     { data: myCreatedChallenges },
     { data: featuredChallenges },
     { data: joinRequests },
   ] = await Promise.all([
-    supabase.from('profiles').select('*').eq('id', user.id).single(),
     supabase
       .from('challenge_participants')
       .select(`
         *,
         challenges (*)
       `)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .eq('status', 'active'),
     supabase
       .from('challenges')
       .select('*')
-      .eq('creator_id', user.id)
+      .eq('creator_id', userId)
       .order('created_at', { ascending: false }),
-    // Featured challenges (both public and private) for sidebar - include ongoing challenges.
-    // Note: Using server date for challenge filtering is acceptable (slight timezone offset
-    // is fine for discovery).
+    // Featured challenges (both public and private) for sidebar - include
+    // ongoing challenges. Note: Using server date for challenge filtering
+    // is acceptable (slight timezone offset is fine for discovery).
     supabase
       .from('challenges')
       .select('*')
@@ -64,12 +117,13 @@ export default async function DashboardPage() {
     supabase
       .from('challenge_join_requests')
       .select('challenge_id, status')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .in('status', ['pending', 'approved']),
   ]);
 
-  // Separate active challenges (where user is participant) and created-only challenges.
-  // Only include challenges that are active, in grace period, or ongoing.
+  // Separate active challenges (where user is participant) and
+  // created-only challenges. Only include challenges that are active, in
+  // grace period, or ongoing.
   const activeChallenges: any[] = [];
   const createdOnlyChallenges: any[] = [];
 
@@ -77,7 +131,6 @@ export default async function DashboardPage() {
     for (const participation of myParticipations) {
       if (participation.challenges) {
         const challengeState = getChallengeState(participation.challenges);
-        // Only include if challenge is active, in grace period, or ongoing (not archived)
         if (challengeState.state === 'active' ||
             challengeState.state === 'grace_period' ||
             challengeState.state === 'ongoing') {
@@ -97,7 +150,6 @@ export default async function DashboardPage() {
 
   if (myCreatedChallenges) {
     for (const challenge of myCreatedChallenges) {
-      // Check if user is also participating
       const isParticipating = activeChallenges.some(
         ac => ac.challenge_id === challenge.id
       );
@@ -107,16 +159,15 @@ export default async function DashboardPage() {
     }
   }
 
-  // Derive IDs needed by Batch B, with null-safe fallbacks (Supabase returns
-  // { data: null, error } rather than throwing on query failure).
+  // Derive IDs needed by Batch B, with null-safe fallbacks (Supabase
+  // returns { data: null, error } rather than throwing on query failure).
   const participationIds = activeChallenges.map(p => p.id);
   const featuredIds = featuredChallenges?.map(c => c.id) ?? [];
   const privateCreatedChallengeIds =
     myCreatedChallenges?.filter(c => !c.is_public).map(c => c.id) ?? [];
 
   // Batch B: queries that depend on Batch A's results. Each is gated on
-  // whether its inputs exist, falling back to an empty result shape so the
-  // destructuring below is always safe.
+  // whether its inputs exist.
   const [
     recentEntriesResult,
     participantCountsResult,
@@ -175,20 +226,15 @@ export default async function DashboardPage() {
   const isNewUser = activeChallenges.length === 0;
 
   return (
-    <div className="space-y-6">
-      {/* Welcome Section */}
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">
-          Welcome back, {profile?.username || 'there'}!
-        </h1>
-        <p className="mt-2 text-muted-foreground">
-          {activeChallenges.length > 0
-            ? `You have ${activeChallenges.length} active ${
-                activeChallenges.length === 1 ? 'challenge' : 'challenges'
-              }`
-            : 'Start your journey by creating or joining a challenge'}
-        </p>
-      </div>
+    <>
+      {/* Welcome subtitle (depends on active challenge count) */}
+      <p className="-mt-4 text-muted-foreground">
+        {activeChallenges.length > 0
+          ? `You have ${activeChallenges.length} active ${
+              activeChallenges.length === 1 ? 'challenge' : 'challenges'
+            }`
+          : 'Start your journey by creating or joining a challenge'}
+      </p>
 
       {/* Pending Join Requests Notification */}
       {pendingJoinRequestsCount > 0 && (
@@ -226,7 +272,7 @@ export default async function DashboardPage() {
               isNewUser={true}
               joinRequests={joinRequests || []}
               showMore={true}
-              currentUserId={user.id}
+              currentUserId={userId}
             />
           </div>
 
@@ -290,7 +336,7 @@ export default async function DashboardPage() {
                       }}
                       challengeState={challengeState}
                       recentEntries={participantEntries}
-                      currentUserId={user.id}
+                      currentUserId={userId}
                     />
                   );
                 })}
@@ -305,7 +351,7 @@ export default async function DashboardPage() {
                   isNewUser={false}
                   joinRequests={joinRequests || []}
                   showMore={true}
-                  currentUserId={user.id}
+                  currentUserId={userId}
                 />
               </div>
             )}
@@ -370,6 +416,76 @@ export default async function DashboardPage() {
           </div>
         </div>
       )}
+    </>
+  );
+}
+
+// Skeleton matching the main content shape. The subtitle placeholder sits
+// just under the welcome header space so the transition feels continuous.
+function DashboardContentSkeleton() {
+  return (
+    <>
+      {/* Subtitle placeholder */}
+      <div className="-mt-4 h-5 w-80 animate-pulse rounded-md bg-muted" />
+
+      {/* Main grid */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
+          <div className="rounded-xl border bg-card p-6 shadow-sm">
+            <div className="mb-4 h-6 w-40 animate-pulse rounded-md bg-muted" />
+            <div className="space-y-3">
+              <div className="h-4 w-full animate-pulse rounded bg-muted" />
+              <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
+            </div>
+          </div>
+
+          <div>
+            <div className="mb-4 h-7 w-48 animate-pulse rounded-md bg-muted" />
+            <div className="grid gap-4 md:grid-cols-2">
+              <ChallengeCardSkeleton />
+              <ChallengeCardSkeleton />
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div className="rounded-xl border bg-card p-6 shadow-sm">
+            <div className="mb-4 h-6 w-32 animate-pulse rounded-md bg-muted" />
+            <div className="space-y-4">
+              <StatsRowSkeleton />
+              <StatsRowSkeleton />
+              <StatsRowSkeleton />
+              <StatsRowSkeleton />
+            </div>
+          </div>
+
+          <div className="rounded-xl border bg-card p-4 shadow-sm">
+            <div className="h-11 w-full animate-pulse rounded-md bg-muted" />
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function ChallengeCardSkeleton() {
+  return (
+    <div className="rounded-xl border bg-card p-6 shadow-sm">
+      <div className="mb-3 h-6 w-3/4 animate-pulse rounded-md bg-muted" />
+      <div className="mb-4 h-4 w-1/2 animate-pulse rounded bg-muted" />
+      <div className="flex gap-2">
+        <div className="h-8 w-16 animate-pulse rounded-md bg-muted" />
+        <div className="h-8 w-16 animate-pulse rounded-md bg-muted" />
+      </div>
+    </div>
+  );
+}
+
+function StatsRowSkeleton() {
+  return (
+    <div className="flex items-center justify-between">
+      <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+      <div className="h-5 w-12 animate-pulse rounded bg-muted" />
     </div>
   );
 }

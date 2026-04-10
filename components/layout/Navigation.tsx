@@ -17,8 +17,22 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import toast from 'react-hot-toast';
 import { Bell } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ThemeToggle } from '@/components/theme-toggle';
+import type { RealtimeChannel } from '@supabase/supabase-js';
+
+// Defer non-critical work until after first paint. Only called from an
+// effect so no SSR guard needed.
+const runWhenIdle = (fn: () => void) => {
+  const ric = (window as unknown as {
+    requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => void;
+  }).requestIdleCallback;
+  if (typeof ric === 'function') {
+    ric(fn, { timeout: 2000 });
+  } else {
+    setTimeout(fn, 0);
+  }
+};
 
 export function Navigation() {
   const pathname = usePathname();
@@ -28,8 +42,17 @@ export function Navigation() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [profile, setProfile] = useState<{ username: string | null; avatar_url: string | null } | null>(null);
 
+  // Holds the set of challenge IDs the current user participates in.
+  // The messages-channel callback reads this to filter out INSERT events
+  // for unrelated challenges (the Supabase realtime subscription itself
+  // has no server-side filter on challenge_messages).
+  const participationIdsRef = useRef<Set<string>>(new Set());
+
   useEffect(() => {
     if (!user) return;
+
+    let cancelled = false;
+    const channels: RealtimeChannel[] = [];
 
     // Fetch profile data including avatar
     const fetchProfile = async () => {
@@ -39,112 +62,147 @@ export function Navigation() {
         .eq('id', user.id)
         .single();
 
-      setProfile(data);
+      if (!cancelled) setProfile(data);
     };
 
-    // Fetch combined unread count (challenge messages + notifications)
+    // Fetch combined unread count (challenge messages + notifications).
+    // Runs both sub-queries in parallel.
     const fetchUnreadCount = async () => {
-      // Get challenge messages count
-      const { data: messagesCount, error: messagesError } = await supabase.rpc('get_total_unread_updates', {
-        p_user_id: user.id,
-      });
+      const [messagesResult, notificationsResult] = await Promise.all([
+        supabase.rpc('get_total_unread_updates', { p_user_id: user.id }),
+        supabase
+          .from('notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('read', false),
+      ]);
 
-      if (messagesError) {
-        console.error('Error fetching unread messages count:', messagesError);
+      if (messagesResult.error) {
+        console.error('Error fetching unread messages count:', messagesResult.error);
+      }
+      if (notificationsResult.error) {
+        console.error('Error fetching unread notifications count:', notificationsResult.error);
       }
 
-      // Get notifications count
-      const { count: notificationsCount, error: notificationsError } = await supabase
-        .from('notifications')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('read', false);
-
-      if (notificationsError) {
-        console.error('Error fetching unread notifications count:', notificationsError);
+      if (!cancelled) {
+        setUnreadCount((messagesResult.data || 0) + (notificationsResult.count || 0));
       }
-
-      setUnreadCount((messagesCount || 0) + (notificationsCount || 0));
     };
 
-    fetchProfile();
-    fetchUnreadCount();
+    // Load the set of challenges this user is currently active in, so the
+    // messages-channel callback can filter unrelated events.
+    const fetchParticipations = async () => {
+      const { data } = await supabase
+        .from('challenge_participants')
+        .select('challenge_id')
+        .eq('user_id', user.id)
+        .eq('status', 'active');
 
-    // Subscribe to profile changes (avatar updates)
-    const profileChannel = supabase
-      .channel('profile-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'profiles',
-          filter: `id=eq.${user.id}`,
-        },
-        () => {
-          fetchProfile();
-        }
-      )
-      .subscribe();
+      if (!cancelled) {
+        participationIdsRef.current = new Set(
+          (data ?? []).map((p: { challenge_id: string }) => p.challenge_id)
+        );
+      }
+    };
 
-    // Subscribe to new challenge messages
-    const messagesChannel = supabase
-      .channel('challenge-messages')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'challenge_messages',
-        },
-        () => {
-          // Refresh unread count when any new message is posted
-          fetchUnreadCount();
-        }
-      )
-      .subscribe();
+    // Fire off the three initial fetches concurrently, then defer all
+    // realtime subscription setup until the browser is idle. This keeps
+    // the navigation bar from contending for main-thread time during
+    // first paint.
+    (async () => {
+      await Promise.all([fetchProfile(), fetchUnreadCount(), fetchParticipations()]);
+      if (cancelled) return;
 
-    // Subscribe to challenge_participants updates (when messages are marked as read)
-    const participantsChannel = supabase
-      .channel('challenge-participants-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'challenge_participants',
-          filter: `user_id=eq.${user.id}`,
-        },
-        () => {
-          // Refresh unread count when last_message_read_at is updated
-          fetchUnreadCount();
-        }
-      )
-      .subscribe();
+      runWhenIdle(() => {
+        if (cancelled) return;
 
-    // Subscribe to notifications changes (new notifications or marked as read)
-    const notificationsChannel = supabase
-      .channel('notifications-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`,
-        },
-        () => {
-          // Refresh unread count when notifications change
-          fetchUnreadCount();
-        }
-      )
-      .subscribe();
+        // Subscribe to profile changes (avatar updates)
+        const profileChannel = supabase
+          .channel('profile-changes')
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'profiles',
+              filter: `id=eq.${user.id}`,
+            },
+            () => {
+              fetchProfile();
+            }
+          )
+          .subscribe();
+
+        // Subscribe to new challenge messages. Can't express an "IN
+        // (user's challenges)" filter at the Supabase realtime layer
+        // reliably, so we subscribe globally and guard in the handler
+        // against the user's participation set.
+        const messagesChannel = supabase
+          .channel('challenge-messages')
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'challenge_messages',
+            },
+            (payload) => {
+              const challengeId = (payload.new as { challenge_id?: string })?.challenge_id;
+              if (challengeId && participationIdsRef.current.has(challengeId)) {
+                fetchUnreadCount();
+              }
+            }
+          )
+          .subscribe();
+
+        // Subscribe to challenge_participants updates (when messages are
+        // marked as read)
+        const participantsChannel = supabase
+          .channel('challenge-participants-updates')
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'challenge_participants',
+              filter: `user_id=eq.${user.id}`,
+            },
+            () => {
+              fetchUnreadCount();
+            }
+          )
+          .subscribe();
+
+        // Subscribe to notifications changes (new notifications or marked
+        // as read)
+        const notificationsChannel = supabase
+          .channel('notifications-updates')
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'notifications',
+              filter: `user_id=eq.${user.id}`,
+            },
+            () => {
+              fetchUnreadCount();
+            }
+          )
+          .subscribe();
+
+        channels.push(
+          profileChannel,
+          messagesChannel,
+          participantsChannel,
+          notificationsChannel
+        );
+      });
+    })();
 
     return () => {
-      supabase.removeChannel(profileChannel);
-      supabase.removeChannel(messagesChannel);
-      supabase.removeChannel(participantsChannel);
-      supabase.removeChannel(notificationsChannel);
+      cancelled = true;
+      channels.forEach((ch) => supabase.removeChannel(ch));
     };
   }, [user, supabase]);
 
