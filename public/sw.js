@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'gritful-static-v1';
+const CACHE_VERSION = 'gritful-static-v2';
 const OFFLINE_URL = '/offline.html';
 
 // Pre-cache offline page on install
@@ -9,21 +9,31 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Clean old caches on activate
+// Clean old caches on activate + enable navigation preload
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) =>
-      Promise.all(
+    (async () => {
+      // Delete old cache versions
+      const cacheNames = await caches.keys();
+      await Promise.all(
         cacheNames
           .filter(
             (name) =>
               name.startsWith('gritful-static-') && name !== CACHE_VERSION
           )
           .map((name) => caches.delete(name))
-      )
-    )
+      );
+
+      // Enable Navigation Preload — lets the network request for a page
+      // start in parallel with the SW boot. Supported in Safari 16.4+;
+      // older browsers just skip this and fall through to normal fetch.
+      if (self.registration.navigationPreload) {
+        await self.registration.navigationPreload.enable();
+      }
+
+      await self.clients.claim();
+    })()
   );
-  self.clients.claim();
 });
 
 // Fetch handler with per-resource strategies
@@ -76,19 +86,32 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Navigation requests -- network-first, offline fallback for HTML only
+  // Navigation requests -- try navigation preload first (parallelized with
+  // SW boot on Safari 16.4+), then standard fetch, then offline fallback
+  // for HTML documents only.
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request).catch(() => {
-        // Only serve offline.html for actual HTML document requests,
-        // not RSC payload fetches which also use navigate mode
-        const acceptHeader = request.headers.get('accept') || '';
-        if (acceptHeader.includes('text/html')) {
-          return caches.match(OFFLINE_URL);
+      (async () => {
+        try {
+          // Use preload response if available. Catch locally so a failed
+          // preload falls through to a standard fetch instead of jumping
+          // straight to the offline branch.
+          const preload = await event.preloadResponse.catch(() => null);
+          if (preload) return preload;
+
+          return await fetch(request);
+        } catch {
+          // Only real network failures land here — the correct condition
+          // for the offline fallback.
+          const acceptHeader = request.headers.get('accept') || '';
+          if (acceptHeader.includes('text/html')) {
+            const cached = await caches.match(OFFLINE_URL);
+            if (cached) return cached;
+          }
+          // RSC fetches that fail just propagate the error naturally
+          return Response.error();
         }
-        // RSC fetches that fail just propagate the error naturally
-        return Response.error();
-      })
+      })()
     );
     return;
   }

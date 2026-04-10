@@ -2,6 +2,19 @@
 
 import { useEffect } from 'react';
 
+// Defer non-critical work until after first contentful paint. Only called
+// from inside an effect, so no SSR guard is needed.
+const runWhenIdle = (fn: () => void) => {
+  const ric = (window as unknown as {
+    requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => void;
+  }).requestIdleCallback;
+  if (typeof ric === 'function') {
+    ric(fn, { timeout: 2000 });
+  } else {
+    setTimeout(fn, 0);
+  }
+};
+
 // Sync any pending push subscription updates that were stored in IndexedDB
 // by the SW when the auth session was expired during pushsubscriptionchange
 async function syncPendingSubscriptions() {
@@ -54,8 +67,12 @@ export function ServiceWorkerRegistrar() {
         console.error('SW registration failed:', error);
       });
 
-      // Sync any pending subscription updates from IndexedDB
-      syncPendingSubscriptions();
+      // Sync any pending subscription updates from IndexedDB. Deferred
+      // because it does IndexedDB reads + network posts and has no
+      // user-visible effect on first paint.
+      runWhenIdle(() => {
+        syncPendingSubscriptions();
+      });
     };
 
     if (document.readyState === 'complete') {

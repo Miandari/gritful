@@ -25,32 +25,51 @@ export default async function DashboardPage() {
     redirect('/login');
   }
 
-  // Get user's profile
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single();
+  // Pre-compute date strings used by multiple queries below
+  const threeDaysAgo = format(subDays(new Date(), 3), 'yyyy-MM-dd');
+  const serverTodayStr = format(new Date(), 'yyyy-MM-dd');
 
-  // Get user's active participations
-  const { data: myParticipations } = await supabase
-    .from('challenge_participants')
-    .select(`
-      *,
-      challenges (*)
-    `)
-    .eq('user_id', user.id)
-    .eq('status', 'active');
+  // Batch A: all queries whose only dependency is user.id run in parallel.
+  const [
+    { data: profile },
+    { data: myParticipations },
+    { data: myCreatedChallenges },
+    { data: featuredChallenges },
+    { data: joinRequests },
+  ] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
+    supabase
+      .from('challenge_participants')
+      .select(`
+        *,
+        challenges (*)
+      `)
+      .eq('user_id', user.id)
+      .eq('status', 'active'),
+    supabase
+      .from('challenges')
+      .select('*')
+      .eq('creator_id', user.id)
+      .order('created_at', { ascending: false }),
+    // Featured challenges (both public and private) for sidebar - include ongoing challenges.
+    // Note: Using server date for challenge filtering is acceptable (slight timezone offset
+    // is fine for discovery).
+    supabase
+      .from('challenges')
+      .select('*')
+      .lte('starts_at', new Date().toISOString())
+      .or(`ends_at.is.null,ends_at.gte.${serverTodayStr}`)
+      .order('created_at', { ascending: false })
+      .limit(10),
+    supabase
+      .from('join_requests')
+      .select('challenge_id, status')
+      .eq('user_id', user.id)
+      .in('status', ['pending', 'approved']),
+  ]);
 
-  // Get challenges user created
-  const { data: myCreatedChallenges } = await supabase
-    .from('challenges')
-    .select('*')
-    .eq('creator_id', user.id)
-    .order('created_at', { ascending: false });
-
-  // Separate active challenges (where user is participant) and created-only challenges
-  // Only include challenges that are active, in grace period, or ongoing
+  // Separate active challenges (where user is participant) and created-only challenges.
+  // Only include challenges that are active, in grace period, or ongoing.
   const activeChallenges: any[] = [];
   const createdOnlyChallenges: any[] = [];
 
@@ -76,21 +95,6 @@ export default async function DashboardPage() {
     }
   }
 
-  // Fetch recent entries for all active challenges (past 3 days to handle timezone differences)
-  // Client components will filter to find today's entries in user's local timezone
-  const threeDaysAgo = format(subDays(new Date(), 3), 'yyyy-MM-dd');
-
-  const { data: recentEntries } = await supabase
-    .from('daily_entries')
-    .select('participant_id, is_completed, entry_date')
-    .in('participant_id', activeChallenges.map(p => p.id))
-    .gte('entry_date', threeDaysAgo);
-
-  // Calculate overall stats
-  const totalPoints = activeChallenges.reduce((sum, p) => sum + (p.total_points || 0), 0);
-  const longestStreak = Math.max(...activeChallenges.map(p => p.longest_streak || 0), 0);
-  const activeStreaksCount = activeChallenges.filter(p => (p.current_streak || 0) > 0).length;
-
   if (myCreatedChallenges) {
     for (const challenge of myCreatedChallenges) {
       // Check if user is also participating
@@ -103,33 +107,59 @@ export default async function DashboardPage() {
     }
   }
 
-  // Fetch featured challenges (both public and private) for sidebar - include ongoing challenges
-  // Note: Using server date for challenge filtering is acceptable (slight timezone offset is fine for discovery)
-  const serverTodayStr = format(new Date(), 'yyyy-MM-dd');
-  const { data: featuredChallenges } = await supabase
-    .from('challenges')
-    .select('*')
-    .lte('starts_at', new Date().toISOString())
-    .or(`ends_at.is.null,ends_at.gte.${serverTodayStr}`)
-    .order('created_at', { ascending: false })
-    .limit(10);
+  // Derive IDs needed by Batch B, with null-safe fallbacks (Supabase returns
+  // { data: null, error } rather than throwing on query failure).
+  const participationIds = activeChallenges.map(p => p.id);
+  const featuredIds = featuredChallenges?.map(c => c.id) ?? [];
+  const privateCreatedChallengeIds =
+    myCreatedChallenges?.filter(c => !c.is_public).map(c => c.id) ?? [];
 
-  // Fetch participant counts for all challenges using RPC function (bypasses RLS)
+  // Batch B: queries that depend on Batch A's results. Each is gated on
+  // whether its inputs exist, falling back to an empty result shape so the
+  // destructuring below is always safe.
+  const [
+    recentEntriesResult,
+    participantCountsResult,
+    pendingCountResult,
+  ] = await Promise.all([
+    participationIds.length > 0
+      ? supabase
+          .from('daily_entries')
+          .select('participant_id, is_completed, entry_date')
+          .in('participant_id', participationIds)
+          .gte('entry_date', threeDaysAgo)
+      : Promise.resolve({ data: [] as any[] }),
+    featuredIds.length > 0
+      ? supabase.rpc('get_challenge_participant_counts', {
+          challenge_ids: featuredIds,
+        })
+      : Promise.resolve({ data: [] as any[] }),
+    privateCreatedChallengeIds.length > 0
+      ? supabase
+          .from('challenge_join_requests')
+          .select('*', { count: 'exact', head: true })
+          .in('challenge_id', privateCreatedChallengeIds)
+          .eq('status', 'pending')
+      : Promise.resolve({ count: 0 }),
+  ]);
+
+  const recentEntries = recentEntriesResult.data ?? [];
+  const participantCounts = participantCountsResult.data ?? null;
+  const pendingJoinRequestsCount = pendingCountResult.count ?? 0;
+
+  // Calculate overall stats
+  const totalPoints = activeChallenges.reduce((sum, p) => sum + (p.total_points || 0), 0);
+  const longestStreak = Math.max(...activeChallenges.map(p => p.longest_streak || 0), 0);
+  const activeStreaksCount = activeChallenges.filter(p => (p.current_streak || 0) > 0).length;
+
+  // Build challenges-with-counts from the featured list + RPC result.
   let challengesWithCounts = featuredChallenges || [];
   if (featuredChallenges && featuredChallenges.length > 0) {
-    const challengeIds = featuredChallenges.map(c => c.id);
-
-    // Use RPC function to get counts (this bypasses RLS and is safe for public counts)
-    const { data: participantCounts } = await supabase
-      .rpc('get_challenge_participant_counts', { challenge_ids: challengeIds });
-
-    // Create a map of challenge_id to count
     const countsMap = new Map<string, number>();
     participantCounts?.forEach((item: { challenge_id: string; participant_count: number }) => {
       countsMap.set(item.challenge_id, item.participant_count);
     });
 
-    // Add counts to challenges
     challengesWithCounts = featuredChallenges.map(challenge => ({
       ...challenge,
       challenge_participants: [{ count: countsMap.get(challenge.id) || 0 }]
@@ -140,28 +170,6 @@ export default async function DashboardPage() {
   const availableChallenges = challengesWithCounts.filter(challenge =>
     !activeChallenges.some(ac => ac.challenge_id === challenge.id)
   );
-
-  // Check if user has pending join requests
-  const { data: joinRequests } = await supabase
-    .from('join_requests')
-    .select('challenge_id, status')
-    .eq('user_id', user.id)
-    .in('status', ['pending', 'approved']);
-
-  // Check for pending join requests TO the user's created private challenges
-  let pendingJoinRequestsCount = 0;
-  const privateCreatedChallengeIds = myCreatedChallenges
-    ?.filter(c => !c.is_public)
-    ?.map(c => c.id) || [];
-
-  if (privateCreatedChallengeIds.length > 0) {
-    const { count } = await supabase
-      .from('challenge_join_requests')
-      .select('*', { count: 'exact', head: true })
-      .in('challenge_id', privateCreatedChallengeIds)
-      .eq('status', 'pending');
-    pendingJoinRequestsCount = count || 0;
-  }
 
   // Determine if user is new (no active challenges)
   const isNewUser = activeChallenges.length === 0;

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
+import { preconnect, prefetchDNS } from 'react-dom';
 import { Providers } from '@/components/shared/Providers';
 import './globals.css';
 
@@ -39,6 +40,16 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Establish early connection to Supabase so the first auth/data request
+  // on cold start doesn't pay the full DNS + TCP + TLS cost. React hoists
+  // these hints into the earliest flushed chunk of the streamed response.
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (supabaseUrl) {
+    const supabaseOrigin = new URL(supabaseUrl).origin;
+    preconnect(supabaseOrigin, { crossOrigin: 'anonymous' });
+    prefetchDNS(supabaseOrigin);
+  }
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
