@@ -6,6 +6,8 @@ import { Share, Download, X } from 'lucide-react';
 const PERMANENT_DISMISS_KEY = 'pwa-install-dismissed';
 const SESSION_DISMISS_KEY = 'pwa-install-dismissed-session';
 const CHROMIUM_ELIGIBLE_KEY = 'pwa-install-chromium-eligible';
+const WAS_STANDALONE_KEY = 'pwa-was-standalone';
+const DISMISS_COOLDOWN_DAYS = 30;
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -37,8 +39,30 @@ export function InstallPrompt() {
   const deferredPromptRef = useRef<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
-    if (isStandalone()) return;
-    if (localStorage.getItem(PERMANENT_DISMISS_KEY)) return;
+    // Record standalone state so we can detect uninstalls later.
+    // When the user has the PWA installed, isStandalone() is true and
+    // we set a flag. If they later visit in Safari (isStandalone() false)
+    // while the flag is set, they likely removed the PWA — clear the
+    // dismiss so they see the install prompt again.
+    if (isStandalone()) {
+      localStorage.setItem(WAS_STANDALONE_KEY, '1');
+      return;
+    }
+
+    if (localStorage.getItem(WAS_STANDALONE_KEY)) {
+      localStorage.removeItem(WAS_STANDALONE_KEY);
+      localStorage.removeItem(PERMANENT_DISMISS_KEY);
+    }
+
+    // Time-based reset: if "Don't show again" was clicked more than 30
+    // days ago, re-show the prompt. The user may have changed their mind.
+    const dismissedAt = localStorage.getItem(PERMANENT_DISMISS_KEY);
+    if (dismissedAt) {
+      const daysSince = (Date.now() - parseInt(dismissedAt, 10)) / (1000 * 60 * 60 * 24);
+      if (daysSince < DISMISS_COOLDOWN_DAYS) return;
+      localStorage.removeItem(PERMANENT_DISMISS_KEY);
+    }
+
     if (sessionStorage.getItem(SESSION_DISMISS_KEY)) return;
 
     // iOS Safari: show manual instructions
