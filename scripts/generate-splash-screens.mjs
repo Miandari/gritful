@@ -35,11 +35,34 @@ const THEMES = [
 
 mkdirSync(OUT_DIR, { recursive: true });
 
+// Remove the icon's baked-in dark background by making near-black pixels
+// transparent. This way the arrows composite cleanly onto any splash color
+// without a visible dark square.
+async function removeIconBackground(iconPath) {
+  const { data, info } = await sharp(iconPath)
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  const THRESHOLD = 35; // pixels with R, G, B all below this become transparent
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i] < THRESHOLD && data[i + 1] < THRESHOLD && data[i + 2] < THRESHOLD) {
+      data[i + 3] = 0; // set alpha to 0
+    }
+  }
+
+  return sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } })
+    .png()
+    .toBuffer();
+}
+
+const transparentIcon = await removeIconBackground(ICON_PATH);
+
 let count = 0;
 
 for (const screen of SCREENS) {
-  const iconSize = Math.round(screen.w * 0.22);
-  const resizedIcon = await sharp(ICON_PATH)
+  const iconSize = Math.round(screen.w * 0.35);
+  const resizedIcon = await sharp(transparentIcon)
     .resize(iconSize, iconSize)
     .toBuffer();
 
