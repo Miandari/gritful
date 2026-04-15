@@ -11,6 +11,12 @@ const inter = Inter({
 });
 
 export const viewport: Viewport = {
+  // Tells the browser to use dark/light default colors based on user
+  // preference BEFORE any CSS loads. Without this, the browser shows a
+  // white background during CSS download — visible as a 1-2s flash on
+  // iOS PWA cold boot. With it, dark-mode users see a dark background
+  // and light-mode users see white (matching their preference).
+  colorScheme: 'dark light',
   themeColor: [
     { media: '(prefers-color-scheme: dark)', color: '#0A0A0B' },
     { media: '(prefers-color-scheme: light)', color: '#FFFFFF' },
