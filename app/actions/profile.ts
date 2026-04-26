@@ -80,13 +80,18 @@ export async function updateProfile(data: {
       }
     }
 
+    // Convert empty strings to null for columns with UNIQUE or CHECK constraints
+    const updateData = {
+      ...data,
+      username: data.username || null,
+      public_profile_url: data.public_profile_url || null,
+      updated_at: new Date().toISOString(),
+    };
+
     // Update profile
     const { error } = await supabase
       .from('profiles')
-      .update({
-        ...data,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', user.id);
 
     if (error) {
