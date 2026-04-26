@@ -12,6 +12,33 @@ interface InvitePageProps {
   params: Promise<{ token: string }>;
 }
 
+export async function generateMetadata({ params }: InvitePageProps) {
+  const { token } = await params;
+  try {
+    const result = await getInviteLinkByToken(token);
+    if (!result.success || !result.challenge) {
+      return { title: 'Gritful' };
+    }
+    const challenge = result.challenge;
+    const desc =
+      challenge.description ||
+      `A ${challenge.duration_days ? challenge.duration_days + '-day' : 'ongoing'} challenge with ${challenge.participantCount} participants`;
+    return {
+      title: `Join "${challenge.name}" on Gritful`,
+      description: desc,
+      openGraph: {
+        title: `Join "${challenge.name}" on Gritful`,
+        description: desc,
+        url: `https://www.gritful.app/invite/${token}`,
+        siteName: 'Gritful',
+        type: 'website' as const,
+      },
+    };
+  } catch {
+    return { title: 'Gritful' };
+  }
+}
+
 export default async function InvitePage({ params }: InvitePageProps) {
   const { token } = await params;
   const result = await getInviteLinkByToken(token);

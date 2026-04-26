@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Lock, Infinity, Clock } from 'lucide-react';
 import JoinPrivateChallengeButtons from '@/components/challenges/JoinPrivateChallengeButtons';
+import { ShareIconButton } from '@/components/challenges/ShareChallengeButton';
 import { CreatorRibbon } from '@/components/challenges/CreatorBadge';
 import { getChallengeState } from '@/lib/utils/challengeState';
 import { cn } from '@/lib/utils';
@@ -87,6 +88,14 @@ export function BrowseChallengeCard({ challenge, currentUserId }: BrowseChalleng
         <CardHeader className={isCreator ? 'pt-8' : ''}>
           <div className="flex items-start justify-between gap-2">
             <CardTitle className="line-clamp-1 flex-1 min-w-0">{challenge.name}</CardTitle>
+            <div className="flex items-center gap-1 shrink-0">
+              {challenge.is_public && (
+                <ShareIconButton
+                  challengeId={challenge.id}
+                  challengeName={challenge.name}
+                  durationDays={challenge.duration_days}
+                />
+              )}
             <Badge
               variant={status.variant}
               className={cn(
@@ -97,6 +106,7 @@ export function BrowseChallengeCard({ challenge, currentUserId }: BrowseChalleng
               {status.isGrace && <Clock className="h-3 w-3" />}
               {status.label}
             </Badge>
+            </div>
           </div>
           <CardDescription className="line-clamp-2">
             {challenge.description || 'No description'}

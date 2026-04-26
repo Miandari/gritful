@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { CreatorRibbon } from '@/components/challenges/CreatorBadge';
 import { Infinity, Clock } from 'lucide-react';
 import { ChallengeStateResult } from '@/lib/utils/challengeState';
+import { ShareIconButton } from '@/components/challenges/ShareChallengeButton';
 import { cn } from '@/lib/utils';
 import { parseLocalDate, getLocalDateFromISO, calculateDisplayStreak } from '@/lib/utils/dates';
 
@@ -28,6 +29,7 @@ interface ActiveChallengeCardProps {
     ends_at: string | null;
     duration_days: number | null;
     creator_id: string;
+    is_public?: boolean;
   };
   challengeState: ChallengeStateResult;
   recentEntries: { entry_date: string; is_completed: boolean }[];
@@ -100,6 +102,13 @@ export function ActiveChallengeCard({
               <Infinity className="h-3 w-3" />
               Ongoing
             </Badge>
+          )}
+          {challenge.is_public && (
+            <ShareIconButton
+              challengeId={challenge.id}
+              challengeName={challenge.name}
+              durationDays={challenge.duration_days}
+            />
           )}
         </div>
       </CardHeader>

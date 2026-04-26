@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,44 +11,58 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { getSafeRedirect } from '@/lib/utils/shareUrls';
 import toast from 'react-hot-toast';
 
-export function LoginForm() {
+export function SignupForm() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = getSafeRedirect(searchParams.get('redirect'));
   const supabase = createClient();
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
+  const safeRedirect = getSafeRedirect(searchParams.get('redirect'));
+
+  const handleEmailSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      if (password.length < 8) {
+        throw new Error('Password must be at least 8 characters');
+      }
+
+      if (username.length < 3) {
+        throw new Error('Username must be at least 3 characters');
+      }
+
+      const { error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            username,
+          },
+        },
       });
 
       if (error) throw error;
 
-      toast.success('Logged in!');
-
-      // Use window.location for full page navigation to ensure redirect works
-      // router.push + router.refresh can cause race conditions with Supabase auth
-      window.location.href = redirect;
+      toast.success('Account created! Please check your email for verification.');
+      router.push(safeRedirect);
+      router.refresh();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to log in');
+      toast.error(error.message || 'Failed to sign up');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleSignup = async () => {
     setLoading(true);
 
     try {
-      const callbackUrl = redirect !== '/dashboard'
-        ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirect)}`
+      const callbackUrl = safeRedirect !== '/dashboard'
+        ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(safeRedirect)}`
         : `${window.location.origin}/auth/callback`;
 
       const { error } = await supabase.auth.signInWithOAuth({
@@ -60,7 +74,7 @@ export function LoginForm() {
 
       if (error) throw error;
     } catch (error: any) {
-      toast.error(error.message || 'Failed to log in with Google');
+      toast.error(error.message || 'Failed to sign up with Google');
       setLoading(false);
     }
   };
@@ -68,11 +82,25 @@ export function LoginForm() {
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
-        <CardTitle>Welcome Back</CardTitle>
-        <CardDescription>Log in to your Gritful account</CardDescription>
+        <CardTitle>Create Account</CardTitle>
+        <CardDescription>Sign up to start tracking your daily challenges</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <form onSubmit={handleEmailLogin} className="space-y-4">
+        <form onSubmit={handleEmailSignup} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="username">Username</Label>
+            <Input
+              id="username"
+              type="text"
+              placeholder="johndoe"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+              disabled={loading}
+              minLength={3}
+            />
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -96,11 +124,13 @@ export function LoginForm() {
               onChange={(e) => setPassword(e.target.value)}
               required
               disabled={loading}
+              minLength={8}
             />
+            <p className="text-xs text-gray-500">Must be at least 8 characters</p>
           </div>
 
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Logging in...' : 'Log In'}
+            {loading ? 'Creating account...' : 'Sign Up'}
           </Button>
         </form>
 
@@ -117,7 +147,7 @@ export function LoginForm() {
           type="button"
           variant="outline"
           className="w-full"
-          onClick={handleGoogleLogin}
+          onClick={handleGoogleSignup}
           disabled={loading}
         >
           <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
@@ -142,9 +172,9 @@ export function LoginForm() {
         </Button>
 
         <div className="text-center text-sm text-gray-600">
-          Don&apos;t have an account?{' '}
-          <Link href="/signup" className="font-medium text-blue-600 hover:text-blue-500">
-            Sign up
+          Already have an account?{' '}
+          <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">
+            Log in
           </Link>
         </div>
       </CardContent>

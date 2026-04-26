@@ -18,6 +18,7 @@ import { AddOnetimeTaskMenuItem } from '@/components/challenges/AddOnetimeTaskMe
 import JoinChallengeButton from '@/components/challenges/JoinChallengeButton';
 import { ChallengeTabs } from '@/components/challenges/ChallengeTabs';
 import { EndChallengeButton } from '@/components/challenges/EndChallengeButton';
+import ShareChallengeButton from '@/components/challenges/ShareChallengeButton';
 
 export default async function ChallengeLayout({
   children,
@@ -173,6 +174,15 @@ export default async function ChallengeLayout({
                   isPublic={challenge.is_public}
                   hasPendingRequest={!!joinRequest}
                   requestStatus={joinRequest?.status}
+                />
+              )}
+              {user && (
+                <ShareChallengeButton
+                  challengeId={id}
+                  challengeName={challenge.name}
+                  challengeDurationDays={challenge.duration_days}
+                  isPublic={challenge.is_public}
+                  isCreator={isCreator}
                 />
               )}
               {isParticipant && (

@@ -333,6 +333,7 @@ async function DashboardContent({ userId }: { userId: string }) {
                         ends_at: challenge.ends_at,
                         duration_days: challenge.duration_days,
                         creator_id: challenge.creator_id,
+                        is_public: challenge.is_public,
                       }}
                       challengeState={challengeState}
                       recentEntries={participantEntries}
