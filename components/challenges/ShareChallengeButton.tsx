@@ -100,9 +100,10 @@ export default function ShareChallengeButton({
   const handleNativeShare = async () => {
     if (!shareUrl) return;
     try {
+      // Only pass title + url. Passing text causes macOS/iOS to concatenate
+      // url + text when user picks "Copy" from the native share sheet.
       await navigator.share({
         title: challengeName,
-        text: shareText,
         url: shareUrl,
       });
     } catch (err) {
@@ -245,7 +246,7 @@ export function ShareIconButton({
 
     if (navigator.share) {
       try {
-        await navigator.share({ title: challengeName, text, url });
+        await navigator.share({ title: challengeName, url });
         return;
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') return;

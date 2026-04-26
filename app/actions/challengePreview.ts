@@ -1,6 +1,21 @@
-'use server';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
-import { createClient } from '@/lib/supabase/server';
+/**
+ * Create a Supabase client with the anon key, no cookie/request context needed.
+ * Safe to use inside unstable_cache and generateMetadata.
+ */
+function createAnonClient() {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  );
+}
 
 export interface ChallengePreview {
   name: string;
@@ -22,7 +37,7 @@ export interface ChallengePreview {
  * - Throws: network/DB error (callers must catch; prevents cache poisoning)
  */
 export async function getChallengePreview(challengeId: string): Promise<ChallengePreview | null> {
-  const supabase = await createClient();
+  const supabase = createAnonClient();
 
   const { data: challenge, error } = await supabase
     .from('challenges')
