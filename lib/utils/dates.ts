@@ -137,3 +137,19 @@ export function calculateDisplayStreak(
 
   return streak;
 }
+
+/**
+ * Calculate the number of calendar days until a challenge starts.
+ * Uses differenceInCalendarDays for correct midnight-boundary counting.
+ *
+ * @param startsAt - Challenge start date (ISO string from database)
+ * @returns Number of calendar days until start (always >= 1 when challenge is upcoming)
+ */
+export function getDaysUntilStart(startsAt: string): number {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const startDate = parseLocalDate(getLocalDateFromISO(startsAt));
+  // Manual calendar day difference (avoids importing differenceInCalendarDays for one use)
+  const msPerDay = 1000 * 60 * 60 * 24;
+  return Math.round((startDate.getTime() - today.getTime()) / msPerDay);
+}

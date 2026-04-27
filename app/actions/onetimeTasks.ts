@@ -44,12 +44,26 @@ export async function saveOnetimeTaskCompletion(data: SaveOnetimeTaskData) {
     // Get challenge with metrics to calculate points
     const { data: challenge } = await supabase
       .from('challenges')
-      .select('metrics, ends_at')
+      .select('metrics, starts_at, ends_at')
       .eq('id', participation.challenge_id)
       .single();
 
     if (!challenge) {
       return { success: false, error: 'Challenge not found' };
+    }
+
+    // Check if challenge has started (use timezone-aware date handling)
+    if (challenge.starts_at) {
+      const todayStr = data.timezone
+        ? getTodayDateStringWithTimezone(data.timezone)
+        : getLocalDateFromISO(new Date().toISOString());
+      const challengeStartStr = data.timezone
+        ? getLocalDateFromISOWithTimezone(challenge.starts_at, data.timezone)
+        : getLocalDateFromISO(challenge.starts_at);
+
+      if (todayStr < challengeStartStr) {
+        return { success: false, error: 'Challenge has not started yet' };
+      }
     }
 
     // Check if challenge has ended (use timezone-aware date handling)

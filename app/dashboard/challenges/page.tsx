@@ -11,6 +11,7 @@ import { format, subDays } from 'date-fns';
 import { getChallengeState, ChallengeStateResult } from '@/lib/utils/challengeState';
 import { cn } from '@/lib/utils';
 import { TodayStatusBadge } from '@/components/dashboard/TodayStatusBadge';
+import { UpcomingBadge } from '@/components/dashboard/UpcomingBadge';
 
 export default async function ChallengesPage({
   searchParams,
@@ -72,10 +73,11 @@ export default async function ChallengesPage({
     for (const participation of myParticipations) {
       if (participation.challenges) {
         const challengeState = getChallengeState(participation.challenges);
-        // Include if active, in grace period, or ongoing (not archived)
+        // Include if active, in grace period, ongoing, or upcoming (not archived)
         if (challengeState.state === 'active' ||
             challengeState.state === 'grace_period' ||
-            challengeState.state === 'ongoing') {
+            challengeState.state === 'ongoing' ||
+            challengeState.state === 'upcoming') {
           activeChallenges.push({
             id: participation.id,
             challenge_id: participation.challenge_id,
@@ -280,6 +282,7 @@ export default async function ChallengesPage({
                   (e) => e.participant_id === participation.id
                 ) || [];
                 const isCreator = challenge.creator_id === user.id;
+                const isUpcoming = challengeState?.state === 'upcoming';
                 const isGracePeriod = challengeState?.state === 'grace_period';
 
                 return (
@@ -287,7 +290,8 @@ export default async function ChallengesPage({
                     key={participation.id}
                     className={cn(
                       "relative overflow-hidden transition-shadow hover:shadow-lg",
-                      isGracePeriod && "border-2 border-amber-400 bg-amber-50/30 dark:bg-amber-950/20"
+                      isGracePeriod && "border-2 border-amber-400 bg-amber-50/30 dark:bg-amber-950/20",
+                      isUpcoming && "border-dashed"
                     )}
                   >
                     {isCreator && <CreatorRibbon showOngoing={isOngoing} />}
@@ -299,7 +303,12 @@ export default async function ChallengesPage({
                             {challenge.description || 'No description'}
                           </CardDescription>
                         </div>
-                        {isGracePeriod && (
+                        {/* Mutually exclusive state badges */}
+                        {isUpcoming ? (
+                          <div className="ml-2 shrink-0">
+                            <UpcomingBadge startsAt={challenge.starts_at} />
+                          </div>
+                        ) : isGracePeriod ? (
                           <Badge
                             variant="outline"
                             className="ml-2 shrink-0 flex items-center gap-1 bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-600"
@@ -307,8 +316,7 @@ export default async function ChallengesPage({
                             <Clock className="h-3 w-3" />
                             {challengeState.daysRemainingInGrace}d grace
                           </Badge>
-                        )}
-                        {!isCreator && isOngoing && !isGracePeriod && (
+                        ) : !isCreator && isOngoing ? (
                           <Badge
                             variant="outline"
                             className="ml-2 shrink-0 flex items-center gap-1"
@@ -316,22 +324,24 @@ export default async function ChallengesPage({
                             <Infinity className="h-3 w-3" />
                             Ongoing
                           </Badge>
-                        )}
+                        ) : null}
                       </div>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-muted-foreground">
-                            {isOngoing ? 'Active' : 'Progress'}
+                            {isUpcoming ? 'Status' : isOngoing ? 'Active' : 'Progress'}
                           </span>
                           <span className="font-medium">
-                            {isOngoing
-                              ? `Day ${daysElapsed + 1}`
-                              : `Day ${Math.min(daysElapsed + 1, challenge.duration_days)} of ${challenge.duration_days}`}
+                            {isUpcoming
+                              ? 'Not started'
+                              : isOngoing
+                                ? `Day ${daysElapsed + 1}`
+                                : `Day ${Math.min(daysElapsed + 1, challenge.duration_days)} of ${challenge.duration_days}`}
                           </span>
                         </div>
-                        {!isOngoing && (
+                        {!isOngoing && !isUpcoming && (
                           <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
                             <div
                               className="h-full bg-blue-600 transition-all"

@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { TodayChallengeCard } from '@/components/dashboard/TodayChallengeCard';
 import { TodaySummary } from '@/components/dashboard/TodaySummary';
 import { getChallengeState, ChallengeStateResult } from '@/lib/utils/challengeState';
+import { UpcomingBadge } from '@/components/dashboard/UpcomingBadge';
 
 export default async function TodayPage() {
   const supabase = await createClient();
@@ -38,6 +39,7 @@ export default async function TodayPage() {
     .eq('status', 'active');
 
   const activeChallenges: any[] = [];
+  const upcomingChallenges: any[] = [];
   // Fetch entries for past 3 days to handle timezone differences
   // Client will filter to find the correct "today" entry
   const recentEntriesMap: Record<string, any[]> = {};
@@ -89,12 +91,23 @@ export default async function TodayPage() {
             .eq('participant_id', participation.id);
 
           periodicCompletionsMap[participation.id] = periodicCompletions || [];
+        } else if (challengeState.state === 'upcoming') {
+          upcomingChallenges.push({
+            ...challenge,
+            participation_id: participation.id,
+            challengeState,
+          });
         }
       }
     }
   }
 
-  if (activeChallenges.length === 0) {
+  // Sort upcoming by start date (soonest first), then by name for stable ordering
+  upcomingChallenges.sort((a: any, b: any) =>
+    a.starts_at.localeCompare(b.starts_at) || a.name.localeCompare(b.name)
+  );
+
+  if (activeChallenges.length === 0 && upcomingChallenges.length === 0) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-8">
         <TodaySummary activeChallenges={[]} recentEntriesMap={{}} />
@@ -158,6 +171,28 @@ export default async function TodayPage() {
           );
         })}
       </div>
+
+      {/* Upcoming challenges */}
+      {upcomingChallenges.length > 0 && (
+        <div className="mt-8 space-y-4">
+          <h2 className="text-lg font-semibold text-muted-foreground">Upcoming</h2>
+          {upcomingChallenges.map((challenge: any) => (
+            <Card key={challenge.id} className="border-dashed">
+              <CardContent className="py-4">
+                <div className="flex items-center justify-between">
+                  <Link
+                    href={`/challenges/${challenge.id}`}
+                    className="font-medium text-green-600 dark:text-green-400 hover:underline"
+                  >
+                    {challenge.name}
+                  </Link>
+                  <UpcomingBadge startsAt={challenge.starts_at} />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

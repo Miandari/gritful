@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { format } from 'date-fns';
 import { calculateEntryScore } from '@/lib/utils/scoring';
-import { parseLocalDate } from '@/lib/utils/dates';
+import { parseLocalDate, getLocalDateFromISO, getTodayDateString } from '@/lib/utils/dates';
 import { checkAndAwardAchievements } from '@/lib/achievements/checkAchievements';
 import type { EarnedAchievement } from '@/lib/achievements/types';
 
@@ -48,12 +48,29 @@ export async function saveDailyEntry(data: SaveEntryData) {
     // Get challenge with metrics and bonus configuration
     const { data: challenge } = await supabase
       .from('challenges')
-      .select('lock_entries_after_day, metrics, enable_streak_bonus, streak_bonus_points, enable_perfect_day_bonus, perfect_day_bonus_points')
+      .select('lock_entries_after_day, metrics, starts_at, ends_at, enable_streak_bonus, streak_bonus_points, enable_perfect_day_bonus, perfect_day_bonus_points')
       .eq('id', participation.challenge_id)
       .single() as any;
 
     if (!challenge) {
       return { success: false, error: 'Challenge not found' };
+    }
+
+    // Validate target date is within challenge period
+    const targetDate = data.targetDate || getTodayDateString();
+
+    if (challenge.starts_at) {
+      const challengeStartStr = getLocalDateFromISO(challenge.starts_at);
+      if (targetDate < challengeStartStr) {
+        return { success: false, error: 'Challenge has not started yet' };
+      }
+    }
+
+    if (challenge.ends_at) {
+      const challengeEndStr = getLocalDateFromISO(challenge.ends_at);
+      if (targetDate > challengeEndStr) {
+        return { success: false, error: 'Challenge has ended' };
+      }
     }
 
     // Get current streak for bonus calculation
@@ -65,7 +82,7 @@ export async function saveDailyEntry(data: SaveEntryData) {
 
     const currentStreak = participantData?.current_streak || 0;
 
-    const today = data.targetDate || getTodayDateString();
+    const today = targetDate;
 
     // Check if entry already exists
     const { data: existingEntry } = await supabase

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { calculateMetricPoints } from '@/lib/utils/scoring';
 import { getPeriodForDate, formatPeriodKey, formatPeriodEnd } from '@/lib/utils/periods';
+import { getLocalDateFromISO, getLocalDateFromISOWithTimezone, getTodayDateStringWithTimezone } from '@/lib/utils/dates';
 import type { PeriodicTaskCompletion } from '@/lib/validations/challenge';
 
 interface SavePeriodicTaskData {
@@ -11,6 +12,7 @@ interface SavePeriodicTaskData {
   taskId: string;
   frequency: 'weekly' | 'monthly';
   value: any;
+  timezone?: string;
 }
 
 /**
@@ -44,7 +46,7 @@ export async function savePeriodicTaskCompletion(data: SavePeriodicTaskData) {
     // Get challenge with metrics to calculate points
     const { data: challenge } = await supabase
       .from('challenges')
-      .select('metrics, ends_at')
+      .select('metrics, starts_at, ends_at')
       .eq('id', participation.challenge_id)
       .single();
 
@@ -52,10 +54,32 @@ export async function savePeriodicTaskCompletion(data: SavePeriodicTaskData) {
       return { success: false, error: 'Challenge not found' };
     }
 
-    // Check if challenge has ended
-    const challengeEnd = new Date(challenge.ends_at);
-    if (new Date() > challengeEnd) {
-      return { success: false, error: 'Challenge has ended' };
+    // Check if challenge has started (timezone-aware)
+    if (challenge.starts_at) {
+      const todayStr = data.timezone
+        ? getTodayDateStringWithTimezone(data.timezone)
+        : getLocalDateFromISO(new Date().toISOString());
+      const challengeStartStr = data.timezone
+        ? getLocalDateFromISOWithTimezone(challenge.starts_at, data.timezone)
+        : getLocalDateFromISO(challenge.starts_at);
+
+      if (todayStr < challengeStartStr) {
+        return { success: false, error: 'Challenge has not started yet' };
+      }
+    }
+
+    // Check if challenge has ended (timezone-aware)
+    if (challenge.ends_at) {
+      const todayStr = data.timezone
+        ? getTodayDateStringWithTimezone(data.timezone)
+        : getLocalDateFromISO(new Date().toISOString());
+      const challengeEndStr = data.timezone
+        ? getLocalDateFromISOWithTimezone(challenge.ends_at, data.timezone)
+        : getLocalDateFromISO(challenge.ends_at);
+
+      if (todayStr > challengeEndStr) {
+        return { success: false, error: 'Challenge has ended' };
+      }
     }
 
     // Find the task in the challenge metrics

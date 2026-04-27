@@ -16,6 +16,8 @@ import { AchievementBadge } from '@/components/achievements/AchievementBadge';
 import { calculateProgress } from '@/lib/achievements/checkAchievements';
 import type { Achievement, AchievementWithProgress, ParticipantStats, AchievementCategory } from '@/lib/achievements/types';
 import { ChallengeStatsSection } from '@/components/challenges/ChallengeStatsSection';
+import { getChallengeState } from '@/lib/utils/challengeState';
+import { UpcomingCountdown } from '@/components/challenges/UpcomingCountdown';
 
 export default async function ChallengeOverviewPage({
   params
@@ -205,6 +207,9 @@ export default async function ChallengeOverviewPage({
     return labels[mode as keyof typeof labels] || mode;
   };
 
+  const challengeState = getChallengeState(challenge);
+  const isUpcoming = challengeState.state === 'upcoming';
+
   return (
     <>
       {/* Progress Stats - Only show for participants */}
@@ -286,22 +291,33 @@ export default async function ChallengeOverviewPage({
             </Card>
           )}
 
-          {/* Today's Entry Card */}
+          {/* Today's Entry Card or Upcoming Countdown */}
           <div className="mt-4">
-            <TodayEntryCard
-              challengeId={challenge.id}
-              participationId={myParticipation.id}
-              metrics={(challenge.metrics as any[]) || []}
-              recentEntries={recentEntries}
-              periodicCompletions={periodicCompletions}
-              onetimeCompletions={onetimeCompletions}
-              currentStreak={myStats.currentStreak}
-              lockEntriesAfterDay={challenge.lock_entries_after_day}
-              enableStreakBonus={challenge.enable_streak_bonus}
-              streakBonusPoints={challenge.streak_bonus_points}
-              enablePerfectDayBonus={challenge.enable_perfect_day_bonus}
-              perfectDayBonusPoints={challenge.perfect_day_bonus_points}
-            />
+            {isUpcoming ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Challenge Starts Soon</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <UpcomingCountdown startsAt={challenge.starts_at} />
+                </CardContent>
+              </Card>
+            ) : (
+              <TodayEntryCard
+                challengeId={challenge.id}
+                participationId={myParticipation.id}
+                metrics={(challenge.metrics as any[]) || []}
+                recentEntries={recentEntries}
+                periodicCompletions={periodicCompletions}
+                onetimeCompletions={onetimeCompletions}
+                currentStreak={myStats.currentStreak}
+                lockEntriesAfterDay={challenge.lock_entries_after_day}
+                enableStreakBonus={challenge.enable_streak_bonus}
+                streakBonusPoints={challenge.streak_bonus_points}
+                enablePerfectDayBonus={challenge.enable_perfect_day_bonus}
+                perfectDayBonusPoints={challenge.perfect_day_bonus_points}
+              />
+            )}
           </div>
         </div>
       )}

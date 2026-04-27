@@ -215,6 +215,15 @@ export default async function JoinChallengePage({
                 </div>
               </div>
 
+              {status === 'upcoming' && (
+                <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 p-4">
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    This challenge has not started yet. Tracking will begin on{' '}
+                    {format(new Date(challenge.starts_at), 'MMMM d, yyyy')}.
+                  </p>
+                </div>
+              )}
+
               {status === 'ended' && (
                 <div className="rounded-lg bg-yellow-50 dark:bg-yellow-900/20 p-4">
                   <p className="text-sm text-yellow-800 dark:text-yellow-200">

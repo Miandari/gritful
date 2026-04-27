@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { FileUpload } from '@/components/ui/file-upload';
 import { DurationInput } from './DurationInput';
 import { Period, formatPeriodKey } from '@/lib/utils/periods';
+import { getUserTimezone } from '@/lib/utils/dates';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -171,6 +172,7 @@ export function PeriodicTaskInput({
         taskId: task.id,
         frequency,
         value: task.type === 'boolean' ? true : value,
+        timezone: getUserTimezone(),
       });
 
       if (!result.success) {
