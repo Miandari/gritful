@@ -329,7 +329,7 @@ LEFT JOIN profiles p ON p.id = cp.user_id;
 
 - [x] **Resend Email Service Setup**
   - Signed up for Resend free tier (3,000 emails/month)
-  - Added gritful.com domain to Resend with DNS verification
+  - Added gritful.app domain to Resend with DNS verification
   - Configured DNS records (SPF, DKIM, DMARC)
   - Stored RESEND_API_KEY in Supabase secrets
 

@@ -25,6 +25,7 @@ import { parseLocalDate } from '@/lib/utils/dates';
 import { getCurrentWeek, getCurrentMonth, formatPeriodKey } from '@/lib/utils/periods';
 import { OnetimeTaskInput } from '@/components/daily-entry/OnetimeTaskInput';
 import { PeriodicTaskInput } from '@/components/daily-entry/PeriodicTaskInput';
+import { DurationInput } from '@/components/daily-entry/DurationInput';
 import { AchievementQueue } from '@/components/achievements/AchievementPopup';
 import type { EarnedAchievement } from '@/lib/achievements/types';
 import toast from 'react-hot-toast';
@@ -307,59 +308,25 @@ export function TodayEntryCard({
         );
 
       case 'duration':
-        const hours = value ? Math.floor(value / 60) : '';
-        const minutes = value ? value % 60 : '';
         return (
-          <div className="flex items-center justify-between py-2 gap-4">
-            <Label className="text-sm shrink-0">
-              {metric.name}
-              {metric.required && <span className="text-red-500 ml-1">*</span>}
-            </Label>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1">
-                <Input
-                  type="number"
-                  min="0"
-                  max="23"
-                  value={hours}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    const h = val === '' ? 0 : parseInt(val);
-                    const currentMinutes = (value || 0) % 60;
-                    const total = h * 60 + currentMinutes;
-                    updateMetricValue(metric.id, total === 0 ? undefined : total);
-                  }}
-                  placeholder="0"
-                  disabled={isLocked}
-                  className="w-14 text-right"
-                />
-                <span className="text-xs text-muted-foreground">h</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Input
-                  type="number"
-                  min="0"
-                  max="59"
-                  value={minutes}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    const m = val === '' ? 0 : parseInt(val);
-                    const currentHours = Math.floor((value || 0) / 60);
-                    const total = currentHours * 60 + m;
-                    updateMetricValue(metric.id, total === 0 ? undefined : total);
-                  }}
-                  placeholder="0"
-                  disabled={isLocked}
-                  className="w-14 text-right"
-                />
-                <span className="text-xs text-muted-foreground">m</span>
-              </div>
+          <div className="py-2 space-y-1">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm shrink-0">
+                {metric.name}
+                {metric.required && <span className="text-red-500 ml-1">*</span>}
+              </Label>
               {metric.points && (
                 <Badge variant="outline" className="text-xs shrink-0">
                   {metric.points} pts
                 </Badge>
               )}
             </div>
+            <DurationInput
+              value={value}
+              onChange={(v) => updateMetricValue(metric.id, v)}
+              disabled={isLocked}
+              compact
+            />
           </div>
         );
 

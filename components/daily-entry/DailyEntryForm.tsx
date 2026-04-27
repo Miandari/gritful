@@ -10,12 +10,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card } from '@/components/ui/card';
-import { Clock, CheckCircle, AlertCircle, Trash2 } from 'lucide-react';
+import { CheckCircle, AlertCircle, Trash2 } from 'lucide-react';
 import { saveDailyEntry, deleteDailyEntry } from '@/app/actions/entries';
 import { useRouter } from 'next/navigation';
 import { FileUpload } from '@/components/ui/file-upload';
 import { OnetimeTasksSection } from './OnetimeTasksSection';
 import { PeriodicTasksSection } from './PeriodicTasksSection';
+import { DurationInput } from './DurationInput';
 import { AchievementQueue } from '@/components/achievements/AchievementPopup';
 import type { EarnedAchievement } from '@/lib/achievements/types';
 import { parseLocalDate } from '@/lib/utils/dates';
@@ -312,50 +313,11 @@ export default function DailyEntryForm({
               {metric.name}
               {metric.required && <span className="text-red-500 ml-1">*</span>}
             </Label>
-            <div className="flex gap-2 items-center">
-              <div className="flex-1">
-                <Input
-                  id={`${metric.id}-hours`}
-                  type="number"
-                  min="0"
-                  max="23"
-                  value={value ? Math.floor(value / 60) || '' : ''}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    const hours = val === '' ? 0 : parseInt(val);
-                    const currentMinutes = (value || 0) % 60;
-                    const totalMinutes = hours * 60 + currentMinutes;
-                    updateMetricValue(metric.id, totalMinutes === 0 ? undefined : totalMinutes);
-                  }}
-                  placeholder="0"
-                  disabled={isLocked}
-                />
-                <span className="text-xs text-muted-foreground ml-1">hours</span>
-              </div>
-              <div className="flex-1">
-                <Input
-                  id={`${metric.id}-minutes`}
-                  type="number"
-                  min="0"
-                  max="59"
-                  value={value ? (value % 60) || '' : ''}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    const minutes = val === '' ? 0 : parseInt(val);
-                    const currentHours = Math.floor((value || 0) / 60);
-                    const totalMinutes = currentHours * 60 + minutes;
-                    updateMetricValue(metric.id, totalMinutes === 0 ? undefined : totalMinutes);
-                  }}
-                  placeholder="0"
-                  disabled={isLocked}
-                />
-                <span className="text-xs text-muted-foreground ml-1">minutes</span>
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground flex items-center">
-              <Clock className="h-3 w-3 mr-1" />
-              Total: {Math.floor((value || 0) / 60)}h {(value || 0) % 60}m
-            </p>
+            <DurationInput
+              value={value}
+              onChange={(v) => updateMetricValue(metric.id, v)}
+              disabled={isLocked}
+            />
           </div>
         );
 

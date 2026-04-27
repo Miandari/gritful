@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card } from '@/components/ui/card';
-import { Clock, CheckCircle2, ChevronDown, ChevronUp, Loader2, ArrowUpRight } from 'lucide-react';
+import { CheckCircle2, ChevronDown, ChevronUp, Loader2, ArrowUpRight } from 'lucide-react';
 import { DeadlineBadge } from './DeadlineBadge';
 import { saveOnetimeTaskCompletion } from '@/app/actions/onetimeTasks';
 import { useRouter } from 'next/navigation';
@@ -16,6 +16,7 @@ import { getUserTimezone } from '@/lib/utils/dates';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 import { FileUpload } from '@/components/ui/file-upload';
+import { DurationInput } from './DurationInput';
 import Link from 'next/link';
 
 interface Task {
@@ -287,53 +288,12 @@ function renderInput(
       );
 
     case 'duration':
-      const hours = value ? Math.floor(value / 60) : '';
-      const minutes = value ? value % 60 : '';
       return (
-        <div className="space-y-2">
-          <div className="flex gap-2 items-center">
-            <div className="flex-1">
-              <Input
-                type="number"
-                min="0"
-                max="23"
-                value={hours}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  const h = val === '' ? 0 : parseInt(val);
-                  const currentMinutes = (value || 0) % 60;
-                  const total = h * 60 + currentMinutes;
-                  setValue(total === 0 ? undefined : total);
-                }}
-                placeholder="0"
-                disabled={disabled}
-              />
-              <span className="text-xs text-muted-foreground ml-1">hours</span>
-            </div>
-            <div className="flex-1">
-              <Input
-                type="number"
-                min="0"
-                max="59"
-                value={minutes}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  const m = val === '' ? 0 : parseInt(val);
-                  const currentHours = Math.floor((value || 0) / 60);
-                  const total = currentHours * 60 + m;
-                  setValue(total === 0 ? undefined : total);
-                }}
-                placeholder="0"
-                disabled={disabled}
-              />
-              <span className="text-xs text-muted-foreground ml-1">minutes</span>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground flex items-center">
-            <Clock className="h-3 w-3 mr-1" />
-            Total: {Math.floor((value || 0) / 60)}h {(value || 0) % 60}m
-          </p>
-        </div>
+        <DurationInput
+          value={value}
+          onChange={setValue}
+          disabled={disabled}
+        />
       );
 
     case 'choice':
