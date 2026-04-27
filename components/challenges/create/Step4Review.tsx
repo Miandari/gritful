@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { useChallengeWizardStore } from '@/lib/stores/challengeStore';
 import { format, addDays } from 'date-fns';
+import { parseLocalDate } from '@/lib/utils/dates';
 import { createChallenge } from '@/app/actions/challenges';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
@@ -25,7 +26,7 @@ export function Step4Review({ onPrev }: Step4ReviewProps) {
       return 'Ongoing';
     }
     if (formData.starts_at && formData.duration_days) {
-      const start = new Date(formData.starts_at);
+      const start = parseLocalDate(formData.starts_at);
       const end = addDays(start, formData.duration_days - 1);
       return format(end, 'MMMM d, yyyy');
     }
@@ -118,7 +119,7 @@ export function Step4Review({ onPrev }: Step4ReviewProps) {
             </div>
             <div>
               <span className="text-sm font-medium text-gray-600">Start Date:</span>
-              <p>{formData.starts_at && format(new Date(formData.starts_at), 'MMM d, yyyy')}</p>
+              <p>{formData.starts_at && format(parseLocalDate(formData.starts_at), 'MMM d, yyyy')}</p>
             </div>
           </div>
           {!formData.is_ongoing && (

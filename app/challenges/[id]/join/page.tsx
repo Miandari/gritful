@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
+import { parseLocalDate } from '@/lib/utils/dates';
 import { joinChallenge } from '@/app/actions/challenges';
 import { getChallengePreview } from '@/app/actions/challengePreview';
 import { unstable_cache } from 'next/cache';
@@ -98,8 +99,8 @@ export default async function JoinChallengePage({
 
     const getChallengeStatus = () => {
       const now = new Date();
-      const startDate = new Date(challenge.starts_at);
-      const endDate = challenge.ends_at ? new Date(challenge.ends_at) : null;
+      const startDate = parseLocalDate(challenge.starts_at);
+      const endDate = challenge.ends_at ? parseLocalDate(challenge.ends_at) : null;
 
       if (now < startDate) return 'upcoming';
       if (endDate && now > endDate) return 'ended';
@@ -169,7 +170,7 @@ export default async function JoinChallengePage({
                     Start Date
                   </span>
                   <p>
-                    {format(new Date(challenge.starts_at), 'MMMM d, yyyy')}
+                    {format(parseLocalDate(challenge.starts_at), 'MMMM d, yyyy')}
                   </p>
                 </div>
                 <div>
@@ -178,7 +179,7 @@ export default async function JoinChallengePage({
                   </span>
                   {challenge.ends_at ? (
                     <p>
-                      {format(new Date(challenge.ends_at), 'MMMM d, yyyy')}
+                      {format(parseLocalDate(challenge.ends_at), 'MMMM d, yyyy')}
                     </p>
                   ) : (
                     <p className="flex items-center gap-1">
@@ -219,7 +220,7 @@ export default async function JoinChallengePage({
                 <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 p-4">
                   <p className="text-sm text-blue-800 dark:text-blue-200">
                     This challenge has not started yet. Tracking will begin on{' '}
-                    {format(new Date(challenge.starts_at), 'MMMM d, yyyy')}.
+                    {format(parseLocalDate(challenge.starts_at), 'MMMM d, yyyy')}.
                   </p>
                 </div>
               )}

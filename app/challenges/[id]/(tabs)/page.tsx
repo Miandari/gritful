@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { format, subDays } from 'date-fns';
+import { parseLocalDate } from '@/lib/utils/dates';
 import Link from 'next/link';
 import { TodayEntryCard } from '@/components/challenges/TodayEntryCard';
 import CopyInviteCodeButton from '@/components/challenges/CopyInviteCodeButton';
@@ -343,12 +344,12 @@ export default async function ChallengeOverviewPage({
             </div>
             <div>
               <span className="text-sm font-medium text-muted-foreground">Start Date:</span>
-              <p>{format(new Date(challenge.starts_at), 'MMMM d, yyyy')}</p>
+              <p>{format(parseLocalDate(challenge.starts_at), 'MMMM d, yyyy')}</p>
             </div>
             <div>
               <span className="text-sm font-medium text-muted-foreground">End Date:</span>
               {challenge.ends_at ? (
-                <p>{format(new Date(challenge.ends_at), 'MMMM d, yyyy')}</p>
+                <p>{format(parseLocalDate(challenge.ends_at), 'MMMM d, yyyy')}</p>
               ) : (
                 <p className="flex items-center gap-1">
                   <Infinity className="h-4 w-4" />
@@ -381,17 +382,16 @@ export default async function ChallengeOverviewPage({
               const onetimeTasks = allMetrics.filter((m: any) => m.frequency === 'onetime');
               const now = new Date();
               now.setHours(0, 0, 0, 0);
-              const startDate = new Date(challenge.starts_at);
-              const endDate = challenge.ends_at ? new Date(challenge.ends_at) : null;
+              const startDate = parseLocalDate(challenge.starts_at);
+              const endDate = challenge.ends_at ? parseLocalDate(challenge.ends_at) : null;
               const isActive = now >= startDate && (endDate === null || now <= endDate);
 
               // Helper to get task status badge
               const getTaskDateBadge = (metric: any) => {
                 if (!metric.starts_at && !metric.ends_at) return null;
 
-                const startDate = metric.starts_at ? new Date(metric.starts_at) : null;
-                const endDate = metric.ends_at ? new Date(metric.ends_at) : null;
-                if (startDate) startDate.setHours(0, 0, 0, 0);
+                const startDate = metric.starts_at ? parseLocalDate(metric.starts_at) : null;
+                const endDate = metric.ends_at ? parseLocalDate(metric.ends_at) : null;
                 if (endDate) endDate.setHours(23, 59, 59, 999);
 
                 // Task hasn't started yet

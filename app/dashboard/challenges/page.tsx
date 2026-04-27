@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Trophy, Calendar, Users, TrendingUp, Plus, Search, Infinity, Clock } from 'lucide-react';
 import { CreatorRibbon } from '@/components/challenges/CreatorBadge';
 import { format, subDays } from 'date-fns';
+import { parseLocalDate } from '@/lib/utils/dates';
 import { getChallengeState, ChallengeStateResult } from '@/lib/utils/challengeState';
 import { cn } from '@/lib/utils';
 import { TodayStatusBadge } from '@/components/dashboard/TodayStatusBadge';
@@ -264,8 +265,7 @@ export default async function ChallengesPage({
 
                 const cardToday = new Date();
                 cardToday.setHours(0, 0, 0, 0);
-                const startDate = new Date(challenge.starts_at);
-                startDate.setHours(0, 0, 0, 0);
+                const startDate = parseLocalDate(challenge.starts_at);
 
                 const daysElapsed = Math.max(
                   0,
@@ -531,7 +531,7 @@ export default async function ChallengesPage({
                           {/* End date info */}
                           {challenge.ends_at && (
                             <div className="text-sm text-muted-foreground">
-                              Ended: {format(new Date(challenge.ends_at), 'MMM d, yyyy')}
+                              Ended: {format(parseLocalDate(challenge.ends_at), 'MMM d, yyyy')}
                             </div>
                           )}
                         </div>

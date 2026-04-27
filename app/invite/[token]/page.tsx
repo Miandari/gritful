@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
+import { parseLocalDate } from '@/lib/utils/dates';
 import Link from 'next/link';
 import { Users, Calendar, Clock, CheckCircle2, AlertCircle, Infinity } from 'lucide-react';
 import InviteLinkJoinButton from '@/components/challenges/InviteLinkJoinButton';
@@ -75,8 +76,8 @@ export default async function InvitePage({ params }: InvitePageProps) {
   const metrics = challenge.metrics as Array<{ name: string; type: string }> | null;
 
   // Format dates
-  const startDate = challenge.starts_at ? format(new Date(challenge.starts_at), 'MMM d, yyyy') : null;
-  const endDate = challenge.ends_at ? format(new Date(challenge.ends_at), 'MMM d, yyyy') : null;
+  const startDate = challenge.starts_at ? format(parseLocalDate(challenge.starts_at), 'MMM d, yyyy') : null;
+  const endDate = challenge.ends_at ? format(parseLocalDate(challenge.ends_at), 'MMM d, yyyy') : null;
   const isOngoing = !challenge.ends_at;
 
   return (

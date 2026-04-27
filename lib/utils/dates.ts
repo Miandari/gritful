@@ -33,19 +33,33 @@ export function toLocalDateString(date: Date): string {
 }
 
 /**
- * Extract the local date string from an ISO timestamp
+ * Extract the local date string from an ISO timestamp or date-only string.
  *
- * IMPORTANT: Use this instead of `isoString.split('T')[0]` when you need
- * the date in the user's local timezone. The split method gives you the
- * UTC date, which can be off by a day depending on timezone.
+ * Handles two formats:
+ * 1. Date-only strings (from PostgreSQL DATE columns): "2026-05-01"
+ *    → Returned as-is. These have no timezone; they represent a calendar date.
+ * 2. ISO timestamps (from TIMESTAMPTZ columns): "2026-01-02T01:00:00Z"
+ *    → Converted to the user's local timezone date.
  *
- * Example:
+ * IMPORTANT: Date-only strings must NOT be passed through `new Date()` because
+ * JavaScript parses them as UTC midnight, shifting the date back by 1 day for
+ * users in negative UTC offsets (Americas).
+ *
+ * Example (timestamp):
  * - UTC timestamp: "2026-01-02T01:00:00Z" (Jan 2, 1 AM UTC)
  * - In EST (UTC-5): This is actually Jan 1, 8 PM local
- * - split('T')[0] returns "2026-01-02" ❌ (UTC date)
  * - This function returns "2026-01-01" ✅ (local date)
+ *
+ * Example (date-only):
+ * - Database DATE: "2026-05-01"
+ * - This function returns "2026-05-01" ✅ (unchanged)
  */
 export function getLocalDateFromISO(isoString: string): string {
+  // Date-only strings (YYYY-MM-DD) from PostgreSQL DATE columns have no timezone.
+  // Return as-is to avoid UTC parsing shifting the date.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(isoString)) {
+    return isoString;
+  }
   const date = new Date(isoString);
   return toLocalDateString(date);
 }
@@ -54,11 +68,18 @@ export function getLocalDateFromISO(isoString: string): string {
  * Get the local date string from an ISO timestamp in a specific timezone.
  * Use this on the SERVER when you know the user's timezone.
  *
- * @param isoString - ISO timestamp from database (e.g., "2026-01-02T05:00:00.000Z")
+ * For date-only strings (from PostgreSQL DATE columns), returns as-is since
+ * they have no timezone to convert.
+ *
+ * @param isoString - ISO timestamp or date-only string from database
  * @param timezone - IANA timezone string (e.g., "America/New_York")
  * @returns Date string in YYYY-MM-DD format in the specified timezone
  */
 export function getLocalDateFromISOWithTimezone(isoString: string, timezone: string): string {
+  // Date-only strings have no timezone to convert
+  if (/^\d{4}-\d{2}-\d{2}$/.test(isoString)) {
+    return isoString;
+  }
   const date = new Date(isoString);
   // en-CA locale gives YYYY-MM-DD format
   return new Intl.DateTimeFormat('en-CA', {

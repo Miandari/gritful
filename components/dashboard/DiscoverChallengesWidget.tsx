@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CreatorRibbon } from '@/components/challenges/CreatorBadge';
 import EnterCodeModal from '@/components/challenges/EnterCodeModal';
+import { parseLocalDate } from '@/lib/utils/dates';
 
 interface Challenge {
   id: string;
@@ -106,7 +107,7 @@ export function DiscoverChallengesWidget({ challenges, isNewUser, joinRequests =
                 const daysRemaining = Math.max(
                   0,
                   Math.ceil(
-                    (new Date(challenge.ends_at).getTime() - new Date().getTime()) /
+                    (parseLocalDate(challenge.ends_at).getTime() - new Date().getTime()) /
                       (1000 * 60 * 60 * 24)
                   )
                 );

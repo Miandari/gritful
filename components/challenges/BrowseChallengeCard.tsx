@@ -171,7 +171,7 @@ export function BrowseChallengeCard({ challenge, currentUserId }: BrowseChalleng
               <div className="text-sm">
                 <span className="text-muted-foreground">Starts: </span>
                 <span className="font-medium">
-                  {format(new Date(challenge.starts_at), 'MMM d, yyyy')}
+                  {format(parseLocalDate(challenge.starts_at), 'MMM d, yyyy')}
                 </span>
               </div>
             )}

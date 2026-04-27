@@ -7,6 +7,7 @@ import { Calendar, Trophy, Target, MapPin, Globe, Twitter, Github, Instagram, Aw
 import { BackButton } from '@/components/shared/BackButton';
 import Link from 'next/link';
 import { format } from 'date-fns';
+import { parseLocalDate } from '@/lib/utils/dates';
 import { CompactAchievementGrid } from '@/components/achievements/AchievementGrid';
 import type { AchievementWithProgress, AchievementCategory } from '@/lib/achievements/types';
 
@@ -389,7 +390,7 @@ export default async function PublicProfilePage({
                         <h3 className="font-medium">{challenge.name}</h3>
                         <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
                           <span>{challenge.duration_days} days</span>
-                          <span>Started {format(new Date(challenge.starts_at), 'MMM d, yyyy')}</span>
+                          <span>Started {format(parseLocalDate(challenge.starts_at), 'MMM d, yyyy')}</span>
                         </div>
                       </div>
                       <Badge variant="secondary">Creator</Badge>

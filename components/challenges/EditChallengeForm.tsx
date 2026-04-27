@@ -179,7 +179,7 @@ export default function EditChallengeForm({ challenge }: EditChallengeFormProps)
             <div>
               <Label className="text-muted-foreground">Start Date</Label>
               <p className="font-medium">
-                {new Date(challenge.starts_at).toLocaleDateString('en-US', {
+                {parseLocalDate(challenge.starts_at).toLocaleDateString('en-US', {
                   weekday: 'long',
                   year: 'numeric',
                   month: 'long',
@@ -241,7 +241,7 @@ export default function EditChallengeForm({ challenge }: EditChallengeFormProps)
                   <Label className="text-muted-foreground">End Date</Label>
                   <p className="font-medium">
                     {challenge.ends_at
-                      ? new Date(challenge.ends_at).toLocaleDateString('en-US', {
+                      ? parseLocalDate(challenge.ends_at).toLocaleDateString('en-US', {
                           weekday: 'long',
                           year: 'numeric',
                           month: 'long',
