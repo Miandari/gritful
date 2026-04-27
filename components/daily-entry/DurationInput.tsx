@@ -9,6 +9,7 @@ interface DurationInputProps {
   onChange: (value: number | undefined) => void;
   disabled?: boolean;
   compact?: boolean;
+  pointsBadge?: React.ReactNode;
 }
 
 const QUICK_INCREMENTS = [
@@ -17,7 +18,7 @@ const QUICK_INCREMENTS = [
   { label: '+1h', minutes: 60 },
 ];
 
-export function DurationInput({ value, onChange, disabled, compact }: DurationInputProps) {
+export function DurationInput({ value, onChange, disabled, compact, pointsBadge }: DurationInputProps) {
   const hours = value ? Math.floor(value / 60) : '';
   const minutes = value ? value % 60 : '';
 
@@ -48,7 +49,7 @@ export function DurationInput({ value, onChange, disabled, compact }: DurationIn
 
   if (compact) {
     return (
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1">
             <Input
@@ -59,7 +60,7 @@ export function DurationInput({ value, onChange, disabled, compact }: DurationIn
               onChange={updateHours}
               placeholder="0"
               disabled={disabled}
-              className="w-16 text-right h-10 text-base"
+              className="w-14 text-right"
             />
             <span className="text-xs text-muted-foreground">h</span>
           </div>
@@ -72,10 +73,11 @@ export function DurationInput({ value, onChange, disabled, compact }: DurationIn
               onChange={updateMinutes}
               placeholder="0"
               disabled={disabled}
-              className="w-16 text-right h-10 text-base"
+              className="w-14 text-right"
             />
             <span className="text-xs text-muted-foreground">m</span>
           </div>
+          {pointsBadge}
         </div>
         <div className="flex items-center gap-1.5">
           {QUICK_INCREMENTS.map((inc) => (
@@ -86,7 +88,7 @@ export function DurationInput({ value, onChange, disabled, compact }: DurationIn
               size="sm"
               disabled={disabled}
               onClick={() => addMinutes(inc.minutes)}
-              className="h-9 flex-1 text-sm font-medium"
+              className="h-8 px-3 text-xs font-medium"
             >
               {inc.label}
             </Button>
@@ -98,9 +100,9 @@ export function DurationInput({ value, onChange, disabled, compact }: DurationIn
               size="sm"
               disabled={disabled}
               onClick={reset}
-              className="h-9 w-9 p-0 shrink-0"
+              className="h-8 w-8 p-0 shrink-0"
             >
-              <RotateCcw className="h-3.5 w-3.5" />
+              <RotateCcw className="h-3 w-3" />
             </Button>
           )}
         </div>

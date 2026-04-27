@@ -309,24 +309,24 @@ export function TodayEntryCard({
 
       case 'duration':
         return (
-          <div className="py-2 space-y-1">
-            <div className="flex items-center justify-between">
+          <div className="py-2 space-y-2">
+            <div className="flex items-center justify-between gap-4">
               <Label className="text-sm shrink-0">
                 {metric.name}
                 {metric.required && <span className="text-red-500 ml-1">*</span>}
               </Label>
-              {metric.points && (
-                <Badge variant="outline" className="text-xs shrink-0">
-                  {metric.points} pts
-                </Badge>
-              )}
+              <DurationInput
+                value={value}
+                onChange={(v) => updateMetricValue(metric.id, v)}
+                disabled={isLocked}
+                compact
+                pointsBadge={metric.points ? (
+                  <Badge variant="outline" className="text-xs shrink-0">
+                    {metric.points} pts
+                  </Badge>
+                ) : undefined}
+              />
             </div>
-            <DurationInput
-              value={value}
-              onChange={(v) => updateMetricValue(metric.id, v)}
-              disabled={isLocked}
-              compact
-            />
           </div>
         );
 
