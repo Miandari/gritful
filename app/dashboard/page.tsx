@@ -110,7 +110,7 @@ async function DashboardContent({ userId }: { userId: string }) {
     supabase
       .from('challenges')
       .select('*')
-      .lte('starts_at', new Date().toISOString())
+      .lte('starts_at', serverTodayStr)
       .or(`ends_at.is.null,ends_at.gte.${serverTodayStr}`)
       .order('created_at', { ascending: false })
       .limit(10),

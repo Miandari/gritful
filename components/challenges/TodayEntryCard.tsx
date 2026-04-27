@@ -185,7 +185,7 @@ export function TodayEntryCard({
 
       // Check deadline
       if (task.deadline) {
-        const deadline = new Date(task.deadline);
+        const deadline = parseLocalDate(task.deadline);
         deadline.setHours(23, 59, 59, 999);
         if (today > deadline) return false;
       }

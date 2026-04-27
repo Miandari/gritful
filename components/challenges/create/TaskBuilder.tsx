@@ -68,7 +68,7 @@ export function TaskBuilder({ metric, onSave, onSaveAndAddAnother, onCancel, cha
   const [deadlinePreset, setDeadlinePreset] = useState<DeadlinePreset>('none');
   const [customDeadline, setCustomDeadline] = useState<string>('');
   const [taskEndDate, setTaskEndDate] = useState<string>(
-    challengeEndDate ? format(new Date(challengeEndDate), 'yyyy-MM-dd') : ''
+    challengeEndDate || ''
   );
 
   // Simplified goal/direction state for number/duration types
@@ -179,7 +179,7 @@ export function TaskBuilder({ metric, onSave, onSaveAndAddAnother, onCancel, cha
     }
     // Add ends_at for mid-challenge recurring tasks
     if (isMidChallengeTask && dataToSave.frequency !== 'onetime' && taskEndDate) {
-      dataToSave.ends_at = new Date(taskEndDate).toISOString();
+      dataToSave.ends_at = taskEndDate;
     }
     onSave(dataToSave);
   };
@@ -206,7 +206,7 @@ export function TaskBuilder({ metric, onSave, onSaveAndAddAnother, onCancel, cha
       dataToSave.created_at = new Date().toISOString();
     }
     if (isMidChallengeTask && dataToSave.frequency !== 'onetime' && taskEndDate) {
-      dataToSave.ends_at = new Date(taskEndDate).toISOString();
+      dataToSave.ends_at = taskEndDate;
     }
     onSaveAndAddAnother?.(dataToSave);
 
@@ -250,7 +250,7 @@ export function TaskBuilder({ metric, onSave, onSaveAndAddAnother, onCancel, cha
   // Calculate max date (challenge end date or 1 year from now)
   const maxDate = useMemo(() => {
     if (challengeEndDate) {
-      return format(new Date(challengeEndDate), 'yyyy-MM-dd');
+      return challengeEndDate;
     }
     const oneYearFromNow = new Date();
     oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);

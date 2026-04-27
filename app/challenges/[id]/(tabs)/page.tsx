@@ -386,12 +386,16 @@ export default async function ChallengeOverviewPage({
               const endDate = challenge.ends_at ? parseLocalDate(challenge.ends_at) : null;
               const isActive = now >= startDate && (endDate === null || now <= endDate);
 
+              // Extract date-only string from either "YYYY-MM-DD" or "YYYY-MM-DDT..." format
+              // Metric dates may be stored as ISO timestamps (old data) or date-only strings (new data)
+              const extractDate = (s: string) => s.includes('T') ? s.split('T')[0] : s;
+
               // Helper to get task status badge
               const getTaskDateBadge = (metric: any) => {
                 if (!metric.starts_at && !metric.ends_at) return null;
 
-                const startDate = metric.starts_at ? parseLocalDate(metric.starts_at) : null;
-                const endDate = metric.ends_at ? parseLocalDate(metric.ends_at) : null;
+                const startDate = metric.starts_at ? parseLocalDate(extractDate(metric.starts_at)) : null;
+                const endDate = metric.ends_at ? parseLocalDate(extractDate(metric.ends_at)) : null;
                 if (endDate) endDate.setHours(23, 59, 59, 999);
 
                 // Task hasn't started yet

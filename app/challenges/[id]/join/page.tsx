@@ -330,7 +330,7 @@ export default async function JoinChallengePage({
     type: string;
   }> | null;
   const startDate = preview.starts_at
-    ? format(new Date(preview.starts_at), 'MMM d, yyyy')
+    ? format(parseLocalDate(preview.starts_at), 'MMM d, yyyy')
     : null;
   const isOngoing = !preview.ends_at;
 
