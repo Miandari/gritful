@@ -121,39 +121,43 @@ async function DashboardContent({ userId }: { userId: string }) {
       .in('status', ['pending', 'approved']),
   ]);
 
-  // Separate active challenges (where user is participant) and
-  // created-only challenges. Only include challenges that are active, in
-  // grace period, or ongoing.
+  // Separate challenges by state: active (including grace/ongoing) and upcoming.
   const activeChallenges: any[] = [];
+  const upcomingChallenges: any[] = [];
   const createdOnlyChallenges: any[] = [];
 
   if (myParticipations) {
     for (const participation of myParticipations) {
       if (participation.challenges) {
         const challengeState = getChallengeState(participation.challenges);
+        const item = {
+          id: participation.id,
+          challenge_id: participation.challenge_id,
+          current_streak: participation.current_streak,
+          longest_streak: participation.longest_streak,
+          total_points: participation.total_points || 0,
+          challenge: participation.challenges,
+          challengeState,
+        };
         if (challengeState.state === 'active' ||
             challengeState.state === 'grace_period' ||
             challengeState.state === 'ongoing') {
-          activeChallenges.push({
-            id: participation.id,
-            challenge_id: participation.challenge_id,
-            current_streak: participation.current_streak,
-            longest_streak: participation.longest_streak,
-            total_points: participation.total_points || 0,
-            challenge: participation.challenges,
-            challengeState,
-          });
+          activeChallenges.push(item);
+        } else if (challengeState.state === 'upcoming') {
+          upcomingChallenges.push(item);
         }
       }
     }
   }
 
+  const allParticipatingIds = new Set([
+    ...activeChallenges.map(ac => ac.challenge_id),
+    ...upcomingChallenges.map(uc => uc.challenge_id),
+  ]);
+
   if (myCreatedChallenges) {
     for (const challenge of myCreatedChallenges) {
-      const isParticipating = activeChallenges.some(
-        ac => ac.challenge_id === challenge.id
-      );
-      if (!isParticipating) {
+      if (!allParticipatingIds.has(challenge.id)) {
         createdOnlyChallenges.push(challenge);
       }
     }
@@ -219,20 +223,23 @@ async function DashboardContent({ userId }: { userId: string }) {
 
   // Filter out challenges user is already participating in
   const availableChallenges = challengesWithCounts.filter(challenge =>
-    !activeChallenges.some(ac => ac.challenge_id === challenge.id)
+    !allParticipatingIds.has(challenge.id)
   );
 
-  // Determine if user is new (no active challenges)
-  const isNewUser = activeChallenges.length === 0;
+  // Determine if user is new (no challenges at all)
+  const isNewUser = activeChallenges.length === 0 && upcomingChallenges.length === 0;
 
   return (
     <>
-      {/* Welcome subtitle (depends on active challenge count) */}
+      {/* Welcome subtitle (depends on challenge counts) */}
       <p className="-mt-4 text-muted-foreground">
-        {activeChallenges.length > 0
-          ? `You have ${activeChallenges.length} active ${
-              activeChallenges.length === 1 ? 'challenge' : 'challenges'
-            }`
+        {activeChallenges.length > 0 || upcomingChallenges.length > 0
+          ? [
+              activeChallenges.length > 0 &&
+                `${activeChallenges.length} active ${activeChallenges.length === 1 ? 'challenge' : 'challenges'}`,
+              upcomingChallenges.length > 0 &&
+                `${upcomingChallenges.length} upcoming`,
+            ].filter(Boolean).join(', ')
           : 'Start your journey by creating or joining a challenge'}
       </p>
 
@@ -302,47 +309,89 @@ async function DashboardContent({ userId }: { userId: string }) {
             />
 
             {/* Active Challenges */}
-            <div>
-              <h2 className="mb-4 text-2xl font-semibold text-foreground">Active Challenges</h2>
-              <div className="grid gap-4 md:grid-cols-2">
-                {activeChallenges.map((participation: any) => {
-                  const challenge = participation.challenge;
-                  const challengeState = participation.challengeState as ChallengeStateResult;
-                  if (!challenge) return null;
+            {activeChallenges.length > 0 && (
+              <div>
+                <h2 className="mb-4 text-2xl font-semibold text-foreground">Active Challenges</h2>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {activeChallenges.map((participation: any) => {
+                    const challenge = participation.challenge;
+                    const challengeState = participation.challengeState as ChallengeStateResult;
+                    if (!challenge) return null;
 
-                  // Filter recent entries for this participation
-                  const participantEntries = recentEntries?.filter(
-                    e => e.participant_id === participation.id
-                  ) || [];
+                    // Filter recent entries for this participation
+                    const participantEntries = recentEntries?.filter(
+                      e => e.participant_id === participation.id
+                    ) || [];
 
-                  return (
-                    <ActiveChallengeCard
-                      key={participation.id}
-                      participation={{
-                        id: participation.id,
-                        challenge_id: participation.challenge_id,
-                        current_streak: participation.current_streak,
-                        longest_streak: participation.longest_streak,
-                        total_points: participation.total_points,
-                      }}
-                      challenge={{
-                        id: challenge.id,
-                        name: challenge.name,
-                        description: challenge.description,
-                        starts_at: challenge.starts_at,
-                        ends_at: challenge.ends_at,
-                        duration_days: challenge.duration_days,
-                        creator_id: challenge.creator_id,
-                        is_public: challenge.is_public,
-                      }}
-                      challengeState={challengeState}
-                      recentEntries={participantEntries}
-                      currentUserId={userId}
-                    />
-                  );
-                })}
+                    return (
+                      <ActiveChallengeCard
+                        key={participation.id}
+                        participation={{
+                          id: participation.id,
+                          challenge_id: participation.challenge_id,
+                          current_streak: participation.current_streak,
+                          longest_streak: participation.longest_streak,
+                          total_points: participation.total_points,
+                        }}
+                        challenge={{
+                          id: challenge.id,
+                          name: challenge.name,
+                          description: challenge.description,
+                          starts_at: challenge.starts_at,
+                          ends_at: challenge.ends_at,
+                          duration_days: challenge.duration_days,
+                          creator_id: challenge.creator_id,
+                          is_public: challenge.is_public,
+                        }}
+                        challengeState={challengeState}
+                        recentEntries={participantEntries}
+                        currentUserId={userId}
+                      />
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Upcoming Challenges */}
+            {upcomingChallenges.length > 0 && (
+              <div>
+                <h2 className="mb-4 text-2xl font-semibold text-foreground">Upcoming Challenges</h2>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {upcomingChallenges.map((participation: any) => {
+                    const challenge = participation.challenge;
+                    const challengeState = participation.challengeState as ChallengeStateResult;
+                    if (!challenge) return null;
+
+                    return (
+                      <ActiveChallengeCard
+                        key={participation.id}
+                        participation={{
+                          id: participation.id,
+                          challenge_id: participation.challenge_id,
+                          current_streak: participation.current_streak,
+                          longest_streak: participation.longest_streak,
+                          total_points: participation.total_points,
+                        }}
+                        challenge={{
+                          id: challenge.id,
+                          name: challenge.name,
+                          description: challenge.description,
+                          starts_at: challenge.starts_at,
+                          ends_at: challenge.ends_at,
+                          duration_days: challenge.duration_days,
+                          creator_id: challenge.creator_id,
+                          is_public: challenge.is_public,
+                        }}
+                        challengeState={challengeState}
+                        recentEntries={[]}
+                        currentUserId={userId}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Discover More - Below Active Challenges for existing users */}
             {availableChallenges.length > 0 && (

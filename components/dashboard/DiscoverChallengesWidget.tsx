@@ -17,9 +17,9 @@ interface Challenge {
   id: string;
   name: string;
   description: string | null;
-  duration_days: number;
+  duration_days: number | null;
   starts_at: string;
-  ends_at: string;
+  ends_at: string | null;
   is_public: boolean;
   creator_id?: string;
   challenge_participants?: { count: number }[];
@@ -104,13 +104,16 @@ export function DiscoverChallengesWidget({ challenges, isNewUser, joinRequests =
             <div className={showMore ? 'grid gap-3 md:grid-cols-2' : 'space-y-3'}>
               {challenges.slice(0, challengesToShow).map((challenge) => {
                 const participantCount = getParticipantCount(challenge);
-                const daysRemaining = Math.max(
-                  0,
-                  Math.ceil(
-                    (parseLocalDate(challenge.ends_at).getTime() - new Date().getTime()) /
-                      (1000 * 60 * 60 * 24)
-                  )
-                );
+                const isOngoing = challenge.ends_at === null;
+                const daysRemaining = isOngoing
+                  ? null
+                  : Math.max(
+                      0,
+                      Math.ceil(
+                        (parseLocalDate(challenge.ends_at!).getTime() - new Date().getTime()) /
+                          (1000 * 60 * 60 * 24)
+                      )
+                    );
                 const joinRequest = getJoinRequestStatus(challenge.id);
                 const isLoading = loadingChallenges.has(challenge.id);
 
@@ -150,7 +153,7 @@ export function DiscoverChallengesWidget({ challenges, isNewUser, joinRequests =
                             </span>
                             <span className="flex items-center gap-1">
                               <Calendar className="h-3 w-3" />
-                              {daysRemaining}d left
+                              {isOngoing ? 'Ongoing' : `${daysRemaining}d left`}
                             </span>
                           </div>
                         </div>
