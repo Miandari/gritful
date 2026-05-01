@@ -33,6 +33,16 @@ export default async function ChallengesPage({
   // Get current tab from URL or default to 'active'
   const currentTab = params?.tab || 'active';
 
+  // Fetch user's timezone for correct challenge state computation
+  const { data: userPrefs } = await supabase
+    .from('user_preferences')
+    .select('reminder_timezone')
+    .eq('user_id', user.id)
+    .single();
+  const userTimezone = userPrefs?.reminder_timezone && userPrefs.reminder_timezone !== 'UTC'
+    ? userPrefs.reminder_timezone
+    : undefined;
+
   // Get user's active participations
   const { data: myParticipations } = await supabase
     .from('challenge_participants')
@@ -73,7 +83,7 @@ export default async function ChallengesPage({
   if (myParticipations) {
     for (const participation of myParticipations) {
       if (participation.challenges) {
-        const challengeState = getChallengeState(participation.challenges);
+        const challengeState = getChallengeState(participation.challenges, new Date(), userTimezone);
         // Include if active, in grace period, ongoing, or upcoming (not archived)
         if (challengeState.state === 'active' ||
             challengeState.state === 'grace_period' ||
@@ -100,7 +110,7 @@ export default async function ChallengesPage({
   if (historyByStatus) {
     for (const participation of historyByStatus) {
       if (participation.challenges) {
-        const challengeState = getChallengeState(participation.challenges);
+        const challengeState = getChallengeState(participation.challenges, new Date(), userTimezone);
         historyMap.set(participation.challenge_id, {
           id: participation.id,
           challenge_id: participation.challenge_id,
@@ -119,7 +129,7 @@ export default async function ChallengesPage({
   if (historyByEndDate) {
     for (const participation of historyByEndDate) {
       if (participation.challenges) {
-        const challengeState = getChallengeState(participation.challenges);
+        const challengeState = getChallengeState(participation.challenges, new Date(), userTimezone);
         // Only include if challenge is archived (past grace period)
         if (challengeState.state === 'archived') {
           historyMap.set(participation.challenge_id, {

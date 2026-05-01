@@ -208,7 +208,20 @@ export default async function ChallengeOverviewPage({
     return labels[mode as keyof typeof labels] || mode;
   };
 
-  const challengeState = getChallengeState(challenge);
+  // Fetch user's timezone for correct challenge state computation
+  let userTimezone: string | undefined;
+  if (user) {
+    const { data: userPrefs } = await supabase
+      .from('user_preferences')
+      .select('reminder_timezone')
+      .eq('user_id', user.id)
+      .single();
+    userTimezone = userPrefs?.reminder_timezone && userPrefs.reminder_timezone !== 'UTC'
+      ? userPrefs.reminder_timezone
+      : undefined;
+  }
+
+  const challengeState = getChallengeState(challenge, new Date(), userTimezone);
   const isUpcoming = challengeState.state === 'upcoming';
 
   return (

@@ -21,6 +21,16 @@ export default async function TodayPage() {
     redirect('/login');
   }
 
+  // Fetch user's timezone for correct challenge state computation
+  const { data: userPrefs } = await supabase
+    .from('user_preferences')
+    .select('reminder_timezone')
+    .eq('user_id', user.id)
+    .single();
+  const userTimezone = userPrefs?.reminder_timezone && userPrefs.reminder_timezone !== 'UTC'
+    ? userPrefs.reminder_timezone
+    : undefined;
+
   // Get user's active participations with challenge details
   // Explicitly select fields to ensure current_streak is included (avoid * caching issues)
   const { data: myParticipations } = await supabase
@@ -53,7 +63,7 @@ export default async function TodayPage() {
       const challenge = participation.challenges;
       if (challenge) {
         // Use the challenge state utility to determine if entries are allowed
-        const challengeState = getChallengeState(challenge);
+        const challengeState = getChallengeState(challenge, new Date(), userTimezone);
 
         // Only show challenges where entry is allowed (active, grace_period, or ongoing)
         if (challengeState.isEntryAllowed) {

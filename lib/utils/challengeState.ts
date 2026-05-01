@@ -6,6 +6,7 @@ import {
   parseLocalDate,
   getLocalDateFromISO,
   getLocalDateFromISOWithTimezone,
+  toLocalDateString,
 } from './dates';
 
 export type ChallengeState =
@@ -42,8 +43,16 @@ export function getChallengeState(
   referenceDate: Date = new Date(),
   timezone?: string
 ): ChallengeStateResult {
-  const today = new Date(referenceDate);
-  today.setHours(0, 0, 0, 0);
+  // Compute "today" as a calendar date in the correct timezone.
+  // On the server (UTC), we need the user's timezone to determine which
+  // calendar day it is for them. Without timezone, uses local (browser or server) time.
+  let todayStr: string;
+  if (timezone) {
+    todayStr = getLocalDateFromISOWithTimezone(referenceDate.toISOString(), timezone);
+  } else {
+    todayStr = toLocalDateString(referenceDate);
+  }
+  const today = parseLocalDate(todayStr);
 
   // Parse start date with timezone awareness
   // If timezone provided (server-side), use timezone-aware parsing

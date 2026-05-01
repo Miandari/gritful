@@ -79,6 +79,16 @@ function WelcomeHeaderSkeleton() {
 async function DashboardContent({ userId }: { userId: string }) {
   const supabase = await createClient();
 
+  // Fetch user's timezone for correct challenge state computation
+  const { data: userPrefs } = await supabase
+    .from('user_preferences')
+    .select('reminder_timezone')
+    .eq('user_id', userId)
+    .single();
+  const userTimezone = userPrefs?.reminder_timezone && userPrefs.reminder_timezone !== 'UTC'
+    ? userPrefs.reminder_timezone
+    : undefined;
+
   // Pre-compute date strings used by multiple queries below
   const threeDaysAgo = format(subDays(new Date(), 3), 'yyyy-MM-dd');
   const serverTodayStr = format(new Date(), 'yyyy-MM-dd');
@@ -129,7 +139,7 @@ async function DashboardContent({ userId }: { userId: string }) {
   if (myParticipations) {
     for (const participation of myParticipations) {
       if (participation.challenges) {
-        const challengeState = getChallengeState(participation.challenges);
+        const challengeState = getChallengeState(participation.challenges, new Date(), userTimezone);
         const item = {
           id: participation.id,
           challenge_id: participation.challenge_id,
