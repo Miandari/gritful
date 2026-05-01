@@ -19,6 +19,7 @@ import toast from 'react-hot-toast';
 import { Bell } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { BottomNav } from './BottomNav';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 // Defer non-critical work until after first paint. Only called from an
@@ -227,6 +228,7 @@ export function Navigation() {
   ];
 
   return (
+    <>
     <nav className="border-b bg-background">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
@@ -258,7 +260,7 @@ export function Navigation() {
                 <ThemeToggle />
 
                 {/* Notifications Bell */}
-                <Link href="/notifications" className="relative">
+                <Link href="/notifications" className="relative hidden md:block">
                   <Button variant="ghost" size="icon" className="relative">
                     <Bell className="h-5 w-5" />
                     {unreadCount > 0 && (
@@ -317,5 +319,7 @@ export function Navigation() {
         </div>
       </div>
     </nav>
+    {user && <BottomNav unreadCount={unreadCount} />}
+    </>
   );
 }

@@ -120,7 +120,7 @@ export function InstallPrompt() {
   };
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 z-50 animate-in slide-in-from-bottom-4 fade-in duration-300">
+    <div className="fixed bottom-20 md:bottom-4 left-4 right-4 z-50 animate-in slide-in-from-bottom-4 fade-in duration-300">
       <div className="mx-auto max-w-md rounded-2xl border border-border bg-card p-4 shadow-lg">
         <div className="flex items-start gap-3">
           <div className="flex-1">

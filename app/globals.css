@@ -160,7 +160,14 @@
   }
   body {
     @apply bg-background text-foreground;
-    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) 0px env(safe-area-inset-left);
+  }
+}
+
+/* Bottom nav content padding: automatically applied when BottomNav is present on mobile */
+@media (max-width: 767.98px) {
+  body:has([data-bottom-nav]) {
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom));
   }
 }
 
