@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { MetricFormData, ChallengeFormData, generateMetricId } from '@/lib/validations/challenge';
 import { ChallengeTemplate } from '@/lib/templates/challengeTemplates';
+import { getTodayDateString } from '@/lib/utils/dates';
 
 interface ChallengeWizardState {
   currentStep: number;
@@ -27,7 +28,7 @@ const initialState = {
     description: '',
     duration_days: 30,
     is_ongoing: false,
-    starts_at: new Date().toISOString().split('T')[0],
+    starts_at: getTodayDateString(),
     is_public: true,
     is_template: false,
     lock_entries_after_day: false,

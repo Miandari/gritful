@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { calculateMetricPoints } from '@/lib/utils/scoring';
 import { getPeriodForDate, formatPeriodKey, formatPeriodEnd } from '@/lib/utils/periods';
-import { getLocalDateFromISO, getLocalDateFromISOWithTimezone, getTodayDateStringWithTimezone } from '@/lib/utils/dates';
+import { getLocalDateFromISO, getLocalDateFromISOWithTimezone, getTodayDateStringWithTimezone, parseLocalDate } from '@/lib/utils/dates';
 import type { PeriodicTaskCompletion } from '@/lib/validations/challenge';
 
 interface SavePeriodicTaskData {
@@ -94,8 +94,11 @@ export async function savePeriodicTaskCompletion(data: SavePeriodicTaskData) {
       return { success: false, error: `Task is not a ${data.frequency} task` };
     }
 
-    // Get current period
-    const currentPeriod = getPeriodForDate(data.frequency);
+    // Get current period in user's timezone
+    const userTodayStr = data.timezone
+      ? getTodayDateStringWithTimezone(data.timezone)
+      : getLocalDateFromISO(new Date().toISOString());
+    const currentPeriod = getPeriodForDate(data.frequency, parseLocalDate(userTodayStr));
     const periodStart = formatPeriodKey(currentPeriod);
     const periodEnd = formatPeriodEnd(currentPeriod);
 
