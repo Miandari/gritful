@@ -194,15 +194,6 @@ export default function DailyEntryForm({
     setIsSubmitting(true);
 
     try {
-      // Validate required fields (only for daily tasks)
-      for (const metric of dailyTasks) {
-        if (metric.required && (formData[metric.id] === undefined || formData[metric.id] === null || formData[metric.id] === '')) {
-          setError(`Please complete the required field: ${metric.name}`);
-          setIsSubmitting(false);
-          return;
-        }
-      }
-
       const result = await saveDailyEntry({
         participantId: participationId,
         metricData: formData,
@@ -296,7 +287,6 @@ export default function DailyEntryForm({
               max={metric.config?.max}
               placeholder={metric.config?.placeholder || '0'}
               disabled={isLocked}
-              required={metric.required}
             />
             {metric.config?.min !== undefined && metric.config?.max !== undefined && (
               <p className="text-xs text-muted-foreground">
@@ -387,7 +377,6 @@ export default function DailyEntryForm({
               placeholder={metric.config?.placeholder}
               maxLength={metric.config?.maxLength}
               disabled={isLocked}
-              required={metric.required}
               rows={3}
             />
             {metric.config?.maxLength && (
