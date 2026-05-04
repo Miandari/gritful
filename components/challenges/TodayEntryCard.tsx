@@ -215,15 +215,6 @@ export function TodayEntryCard({
     setIsSubmitting(true);
 
     try {
-      // Validate required fields
-      for (const metric of dailyTasks) {
-        if (metric.required && (formData[metric.id] === undefined || formData[metric.id] === null || formData[metric.id] === '')) {
-          setError(`Please complete: ${metric.name}`);
-          setIsSubmitting(false);
-          return;
-        }
-      }
-
       const result = await saveDailyEntry({
         participantId: participationId,
         metricData: formData,
